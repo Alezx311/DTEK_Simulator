@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ДТЕК Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #12171f;
+            --bg-panel: #1a1f2a;
+            --border: #2a3140;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #565d67;
+            --accent-blue: #58a6ff;
+            --accent-cyan: #39c5cf;
+            --status-green: #3fb950;
+            --status-yellow: #d29922;
+            --status-orange: #db6d28;
+            --status-red: #f85149;
+            --status-purple: #a371f7;
+            --glow-green: rgba(63, 185, 80, 0.3);
+            --glow-red: rgba(248, 81, 73, 0.3);
+            --glow-yellow: rgba(210, 153, 34, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scanline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.3;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 20px var(--accent-cyan);
+            letter-spacing: 2px;
+        }
+
+        .logo span {
+            color: var(--status-yellow);
+            text-shadow: 0 0 20px var(--status-yellow);
+        }
+
+        .header-info {
+            display: flex;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .header-item {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .header-item .label {
+            color: var(--text-muted);
+            margin-right: 8px;
+        }
+
+        .header-item .value {
+            color: var(--text-primary);
+        }
+
+        .time-display {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+            text-shadow: 0 0 15px var(--accent-blue);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            height: calc(100vh - 60px);
+        }
+
+        /* Map Area */
+        .map-area {
+            padding: 16px;
+            position: relative;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .map-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            min-height: 450px;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .map-header {
+            background: var(--bg-panel);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .map-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .map-legend {
+            display: flex;
+            gap: 16px;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.on { background: var(--status-green); box-shadow: 0 0 8px var(--glow-green); }
+        .legend-dot.scheduled { background: var(--status-yellow); box-shadow: 0 0 8px var(--glow-yellow); }
+        .legend-dot.emergency { background: var(--status-orange); }
+        .legend-dot.damaged { background: var(--status-red); box-shadow: 0 0 8px var(--glow-red); }
+
+        /* Kyiv Map SVG */
+        .kyiv-map {
+            width: 100%;
+            height: calc(100% - 50px);
+            padding: 20px;
+        }
+
+        .district {
+            fill: var(--bg-panel);
+            stroke: var(--border);
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .district:hover {
+            fill: #252d3a;
+            stroke: var(--accent-blue);
+            stroke-width: 2;
+        }
+
+        .district.status-on {
+            fill: rgba(63, 185, 80, 0.15);
+            stroke: var(--status-green);
+        }
+
+        .district.status-scheduled {
+            fill: rgba(210, 153, 34, 0.15);
+            stroke: var(--status-yellow);
+            animation: pulse-yellow 2s infinite;
+        }
+
+        .district.status-emergency {
+            fill: rgba(219, 109, 40, 0.2);
+            stroke: var(--status-orange);
+            animation: pulse-orange 1.5s infinite;
+        }
+
+        .district.status-damaged {
+            fill: rgba(248, 81, 73, 0.2);
+            stroke: var(--status-red);
+            animation: pulse-red 1s infinite;
+        }
+
+        @keyframes pulse-yellow {
+            0%, 100% { fill: rgba(210, 153, 34, 0.15); }
+            50% { fill: rgba(210, 153, 34, 0.25); }
+        }
+
+        @keyframes pulse-orange {
+            0%, 100% { fill: rgba(219, 109, 40, 0.2); }
+            50% { fill: rgba(219, 109, 40, 0.35); }
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { fill: rgba(248, 81, 73, 0.2); }
+            50% { fill: rgba(248, 81, 73, 0.4); }
+        }
+
+        .district-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            fill: var(--text-secondary);
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        .district-power {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            fill: var(--text-muted);
+            pointer-events: none;
+            text-anchor: middle;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-section {
+            border-bottom: 1px solid var(--border);
+            padding: 16px;
+        }
+
+        .panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 3px;
+            height: 12px;
+            background: var(--accent-cyan);
+            border-radius: 2px;
+        }
+
+        /* Load Meter */
+        .load-meter {
+            background: var(--bg-panel);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .load-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .load-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .load-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .load-value.safe { color: var(--status-green); }
+        .load-value.warning { color: var(--status-yellow); }
+        .load-value.danger { color: var(--status-red); }
+
+        .load-bar-container {
+            height: 12px;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .load-bar {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease, background 0.3s ease;
+        }
+
+        .load-bar.safe { background: linear-gradient(90deg, var(--status-green), #45d15a); }
+        .load-bar.warning { background: linear-gradient(90deg, var(--status-yellow), #e5b02a); }
+        .load-bar.danger { background: linear-gradient(90deg, var(--status-orange), var(--status-red)); }
+
+        .load-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-box {
+            background: var(--bg-panel);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Reputation Bars */
+        .reputation-item {
+            margin-bottom: 12px;
+        }
+
+        .reputation-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .reputation-name {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .reputation-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+        }
+
+        .reputation-bar-bg {
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .reputation-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .reputation-bar.high { background: var(--status-green); }
+        .reputation-bar.medium { background: var(--status-yellow); }
+        .reputation-bar.low { background: var(--status-red); }
+
+        /* Events Feed */
+        .events-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .event-item {
+            background: var(--bg-panel);
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--border);
+            font-size: 0.8rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .event-item.alert { border-left-color: var(--status-red); }
+        .event-item.warning { border-left-color: var(--status-yellow); }
+        .event-item.info { border-left-color: var(--accent-blue); }
+        .event-item.success { border-left-color: var(--status-green); }
+
+        .event-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .event-text {
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* District Panel (popup) */
+        .district-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 350px;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .district-panel.active {
+            display: block;
+            animation: popIn 0.2s ease;
+        }
+
+        @keyframes popIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 99;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        .district-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .district-panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            color: var(--accent-cyan);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .group-list {
+            margin-bottom: 20px;
+        }
+
+        .group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--bg-panel);
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .group-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+
+        .group-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .toggle-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .toggle-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .toggle-btn.on {
+            background: rgba(63, 185, 80, 0.2);
+            border-color: var(--status-green);
+            color: var(--status-green);
+        }
+
+        .toggle-btn.off {
+            background: rgba(248, 81, 73, 0.2);
+            border-color: var(--status-red);
+            color: var(--status-red);
+        }
+
+        /* Alert Banner */
+        .alert-banner {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, rgba(248, 81, 73, 0.9), rgba(219, 109, 40, 0.9));
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            z-index: 50;
+            display: none;
+            animation: alertPulse 1s infinite;
+        }
+
+        .alert-banner.active {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(248, 81, 73, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(248, 81, 73, 0.8); }
+        }
+
+        /* Control Buttons */
+        .controls {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .control-btn {
+            flex: 1;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .control-btn.primary {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .control-btn.primary:hover {
+            background: #4a9aef;
+        }
+
+        .control-btn.danger {
+            border-color: var(--status-red);
+            color: var(--status-red);
+        }
+
+        /* Wave Timer */
+        .wave-timer {
+            background: linear-gradient(135deg, var(--bg-panel), var(--bg-secondary));
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wave-timer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(88, 166, 255, 0.1), rgba(57, 197, 207, 0.1));
+            transition: width 1s linear;
+            z-index: 0;
+        }
+
+        .wave-timer.danger::before {
+            background: linear-gradient(90deg, rgba(248, 81, 73, 0.2), rgba(219, 109, 40, 0.2));
+        }
+
+        .wave-timer-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .wave-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .wave-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .wave-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--accent-cyan);
+            font-weight: 600;
+        }
+
+        .wave-countdown {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            color: var(--text-primary);
+            text-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+        }
+
+        .wave-countdown.danger {
+            color: var(--status-red);
+            text-shadow: 0 0 20px rgba(248, 81, 73, 0.8);
+            animation: countdownPulse 0.5s infinite;
+        }
+
+        .wave-countdown.attack {
+            color: var(--status-orange);
+            animation: countdownPulse 0.3s infinite;
+        }
+
+        @keyframes countdownPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .wave-status {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .wave-status.prep { color: var(--status-green); }
+        .wave-status.incoming { color: var(--status-yellow); }
+        .wave-status.attack { color: var(--status-red); }
+
+        /* Upgrades Panel */
+        .upgrades-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .upgrades-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .upgrades-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .currency {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--status-yellow);
+        }
+
+        .upgrades-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .upgrade-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .upgrade-btn:hover:not(:disabled) {
+            border-color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.1);
+        }
+
+        .upgrade-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upgrade-btn.purchased {
+            border-color: var(--status-green);
+            background: rgba(63, 185, 80, 0.1);
+        }
+
+        .upgrade-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .upgrade-desc {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+
+        .upgrade-cost {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--status-yellow);
+            margin-top: 6px;
+        }
+
+        /* Overload Warning */
+        .overload-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(248, 81, 73, 0.95);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            z-index: 200;
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(248, 81, 73, 0.8);
+            animation: overloadPulse 0.5s infinite;
+        }
+
+        .overload-warning.active {
+            display: block;
+        }
+
+        @keyframes overloadPulse {
+            0%, 100% { box-shadow: 0 0 60px rgba(248, 81, 73, 0.8); }
+            50% { box-shadow: 0 0 100px rgba(248, 81, 73, 1); }
+        }
+
+        .overload-warning .sub {
+            font-size: 0.9rem;
+            font-weight: 400;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        /* Game Over / Victory */
+        .game-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            flex-direction: column;
+        }
+
+        .game-overlay.active {
+            display: flex;
+        }
+
+        .game-over-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .game-over-text.defeat { color: var(--status-red); text-shadow: 0 0 40px var(--status-red); }
+        .game-over-text.victory { color: var(--status-green); text-shadow: 0 0 40px var(--status-green); }
+
+        .game-stats {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .restart-btn {
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .restart-btn:hover {
+            background: #4a9aef;
+            transform: scale(1.05);
+        }
+
+        /* Attack Indicators on Map */
+        .attack-indicator {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: var(--status-red);
+            border-radius: 50%;
+            animation: attackMove 3s linear forwards, attackPulse 0.3s infinite;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            box-shadow: 0 0 20px var(--status-red);
+        }
+
+        @keyframes attackMove {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        @keyframes attackPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        /* Quick Controls Panel */
+        .quick-controls {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 16px;
+            overflow: hidden;
+        }
+
+        .quick-controls-header {
+            background: var(--bg-panel);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quick-controls-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .quick-controls-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .quick-action-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .quick-action-btn:hover {
+            border-color: var(--status-green);
+            color: var(--status-green);
+        }
+
+        .quick-action-btn.danger:hover {
+            border-color: var(--status-red);
+            color: var(--status-red);
+        }
+
+        .districts-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            padding: 16px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .district-control {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            transition: all 0.2s;
+        }
+
+        .district-control:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .district-control.has-off {
+            border-color: var(--status-yellow);
+            background: rgba(210, 153, 34, 0.05);
+        }
+
+        .district-control.has-damaged {
+            border-color: var(--status-red);
+            background: rgba(248, 81, 73, 0.05);
+        }
+
+        .district-control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .district-control-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .district-control-power {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--accent-cyan);
+        }
+
+        .group-toggles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .group-toggle {
+            width: 32px;
+            height: 24px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .group-toggle:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .group-toggle.on {
+            background: rgba(63, 185, 80, 0.2);
+            border-color: var(--status-green);
+            color: var(--status-green);
+            box-shadow: 0 0 8px rgba(63, 185, 80, 0.3);
+        }
+
+        .group-toggle.scheduled {
+            background: rgba(210, 153, 34, 0.2);
+            border-color: var(--status-yellow);
+            color: var(--status-yellow);
+            animation: togglePulseYellow 2s infinite;
+        }
+
+        .group-toggle.emergency {
+            background: rgba(219, 109, 40, 0.2);
+            border-color: var(--status-orange);
+            color: var(--status-orange);
+        }
+
+        .group-toggle.damaged {
+            background: rgba(248, 81, 73, 0.2);
+            border-color: var(--status-red);
+            color: var(--status-red);
+            cursor: not-allowed;
+            animation: togglePulseRed 1s infinite;
+        }
+
+        @keyframes togglePulseYellow {
+            0%, 100% { box-shadow: 0 0 4px rgba(210, 153, 34, 0.3); }
+            50% { box-shadow: 0 0 12px rgba(210, 153, 34, 0.6); }
+        }
+
+        @keyframes togglePulseRed {
+            0%, 100% { box-shadow: 0 0 4px rgba(248, 81, 73, 0.3); }
+            50% { box-shadow: 0 0 12px rgba(248, 81, 73, 0.6); }
+        }
+
+        .district-control-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .stat-on { color: var(--status-green); }
+        .stat-off { color: var(--status-yellow); }
+        .stat-dmg { color: var(--status-red); }
+
+        /* Social Feed */
+        .social-feed {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .social-post {
+            background: var(--bg-panel);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+        }
+
+        .social-author {
+            color: var(--accent-blue);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .social-text {
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .social-likes {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">ДТЕК <span>Simulator</span></div>
+        <div class="header-info">
+            <div class="header-item">
+                <span class="label">ЗМІНА:</span>
+                <span class="value" id="shift-type">РАНКОВА</span>
+            </div>
+            <div class="header-item">
+                <span class="label">ДАТА:</span>
+                <span class="value">Рік 1, Зима</span>
+            </div>
+            <div class="time-display" id="game-time">07:00</div>
+        </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div class="alert-banner" id="alert-banner">
+        <span>⚠️</span>
+        <span id="alert-text">ТРИВОГА: Виявлено шахеди!</span>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Map Area -->
+        <div class="map-area">
+            <div class="map-container">
+                <div class="map-header">
+                    <div class="map-title">📍 Карта Києва — Енергомережа</div>
+                    <div class="map-legend">
+                        <div class="legend-item"><div class="legend-dot on"></div> Увімк</div>
+                        <div class="legend-item"><div class="legend-dot scheduled"></div> Графік</div>
+                        <div class="legend-item"><div class="legend-dot emergency"></div> Аварія</div>
+                        <div class="legend-item"><div class="legend-dot damaged"></div> Пошкодж</div>
+                    </div>
+                </div>
+                
+                <svg class="kyiv-map" viewBox="0 0 800 600" id="kyiv-map">
+                    <!-- Simplified Kyiv districts -->
+                    <!-- Оболонський -->
+                    <path class="district status-on" id="obolon" d="M250,80 L350,60 L400,100 L380,180 L280,170 L230,130 Z"/>
+                    <text class="district-label" x="310" y="110">Оболонь</text>
+                    <text class="district-power" x="310" y="125" id="obolon-power">145 MW</text>
+                    
+                    <!-- Подільський -->
+                    <path class="district status-on" id="podil" d="M380,180 L400,100 L480,120 L500,200 L420,220 Z"/>
+                    <text class="district-label" x="440" y="160">Поділ</text>
+                    <text class="district-power" x="440" y="175" id="podil-power">98 MW</text>
+                    
+                    <!-- Шевченківський -->
+                    <path class="district status-on" id="shevchenko" d="M280,170 L380,180 L420,220 L400,300 L300,280 L260,220 Z"/>
+                    <text class="district-label" x="340" y="230">Шевченко</text>
+                    <text class="district-power" x="340" y="245" id="shevchenko-power">156 MW</text>
+                    
+                    <!-- Печерський -->
+                    <path class="district status-on" id="pechersk" d="M420,220 L500,200 L540,280 L500,360 L400,340 L400,300 Z"/>
+                    <text class="district-label" x="460" y="280">Печерськ</text>
+                    <text class="district-power" x="460" y="295" id="pechersk-power">178 MW</text>
+                    
+                    <!-- Святошинський -->
+                    <path class="district status-on" id="sviatoshyn" d="M100,180 L230,130 L280,170 L260,220 L200,280 L100,260 Z"/>
+                    <text class="district-label" x="180" y="210">Святошино</text>
+                    <text class="district-power" x="180" y="225" id="sviatoshyn-power">134 MW</text>
+                    
+                    <!-- Солом'янський -->
+                    <path class="district status-on" id="solomianka" d="M200,280 L260,220 L300,280 L280,380 L180,360 Z"/>
+                    <text class="district-label" x="240" y="310">Солом'янка</text>
+                    <text class="district-power" x="240" y="325" id="solomianka-power">112 MW</text>
+                    
+                    <!-- Голосіївський -->
+                    <path class="district status-on" id="holosiiv" d="M280,380 L300,280 L400,300 L400,340 L380,450 L280,460 Z"/>
+                    <text class="district-label" x="340" y="380">Голосіїв</text>
+                    <text class="district-power" x="340" y="395" id="holosiiv-power">125 MW</text>
+                    
+                    <!-- Деснянський -->
+                    <path class="district status-on" id="desnianskyi" d="M500,200 L600,150 L700,200 L680,300 L580,320 L540,280 Z"/>
+                    <text class="district-label" x="600" y="230">Деснянський</text>
+                    <text class="district-power" x="600" y="245" id="desnianskyi-power">167 MW</text>
+                    
+                    <!-- Дніпровський -->
+                    <path class="district status-on" id="dnipro" d="M540,280 L580,320 L620,420 L520,450 L500,360 Z"/>
+                    <text class="district-label" x="560" y="370">Дніпровський</text>
+                    <text class="district-power" x="560" y="385" id="dnipro-power">143 MW</text>
+                    
+                    <!-- Дарницький -->
+                    <path class="district status-on" id="darnytsia" d="M580,320 L680,300 L720,400 L650,480 L620,420 Z"/>
+                    <text class="district-label" x="650" y="380">Дарниця</text>
+                    <text class="district-power" x="650" y="395" id="darnytsia-power">152 MW</text>
+                    
+                    <!-- Power lines -->
+                    <g stroke="var(--accent-cyan)" stroke-width="2" opacity="0.3">
+                        <line x1="310" y1="120" x2="340" y2="230"/>
+                        <line x1="340" y1="230" x2="460" y2="280"/>
+                        <line x1="460" y1="280" x2="600" y2="230"/>
+                        <line x1="180" y1="210" x2="340" y2="230"/>
+                        <line x1="340" y1="230" x2="340" y2="380"/>
+                    </g>
+                    
+                    <!-- Substations -->
+                    <g fill="var(--accent-cyan)">
+                        <circle cx="310" cy="120" r="5"/>
+                        <circle cx="340" cy="230" r="6"/>
+                        <circle cx="460" cy="280" r="5"/>
+                        <circle cx="600" cy="230" r="5"/>
+                        <circle cx="180" cy="210" r="5"/>
+                        <circle cx="340" cy="380" r="5"/>
+                    </g>
+                </svg>
+            </div>
+            
+            <!-- Quick Controls Panel -->
+            <div class="quick-controls">
+                <div class="quick-controls-header">
+                    <div class="quick-controls-title">⚡ Швидке управління групами</div>
+                    <div class="quick-controls-actions">
+                        <button class="quick-action-btn" onclick="enableAllGroups()">Увімкнути все</button>
+                        <button class="quick-action-btn danger" onclick="emergencyShutdown()">Аварійне відключення</button>
+                    </div>
+                </div>
+                <div class="districts-grid" id="districts-grid">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <!-- Wave Timer -->
+            <div class="panel-section">
+                <div class="wave-timer" id="wave-timer">
+                    <div class="wave-timer-content">
+                        <div class="wave-header">
+                            <span class="wave-label">Наступна хвиля</span>
+                            <span class="wave-number" id="wave-number">Хвиля 1</span>
+                        </div>
+                        <div class="wave-countdown" id="wave-countdown">0:60</div>
+                        <div class="wave-status prep" id="wave-status">🛡️ Час на підготовку</div>
+                    </div>
+                </div>
+                
+                <!-- Upgrades -->
+                <div class="upgrades-panel" id="upgrades-panel">
+                    <div class="upgrades-header">
+                        <span class="upgrades-title">🔧 Покращення</span>
+                        <span class="currency">💰 <span id="currency">100</span></span>
+                    </div>
+                    <div class="upgrades-grid" id="upgrades-grid">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Load Section -->
+            <div class="panel-section">
+                <div class="panel-title">Навантаження мережі</div>
+                <div class="load-meter">
+                    <div class="load-header">
+                        <span class="load-label">Поточне</span>
+                        <span class="load-value safe" id="load-percent">72%</span>
+                    </div>
+                    <div class="load-bar-container">
+                        <div class="load-bar safe" id="load-bar" style="width: 72%"></div>
+                    </div>
+                    <div class="load-markers">
+                        <span>0%</span>
+                        <span>40%</span>
+                        <span>85%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="generation">1410</div>
+                        <div class="stat-label">Генерація MW</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="consumption">1015</div>
+                        <div class="stat-label">Споживання MW</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reputation Section -->
+            <div class="panel-section">
+                <div class="panel-title">Репутація</div>
+                <div class="reputation-item">
+                    <div class="reputation-header">
+                        <span class="reputation-name">👥 Мешканці</span>
+                        <span class="reputation-value" id="rep-residents">78%</span>
+                    </div>
+                    <div class="reputation-bar-bg">
+                        <div class="reputation-bar high" id="rep-bar-residents" style="width: 78%"></div>
+                    </div>
+                </div>
+                <div class="reputation-item">
+                    <div class="reputation-header">
+                        <span class="reputation-name">🏢 Бізнес</span>
+                        <span class="reputation-value" id="rep-business">65%</span>
+                    </div>
+                    <div class="reputation-bar-bg">
+                        <div class="reputation-bar medium" id="rep-bar-business" style="width: 65%"></div>
+                    </div>
+                </div>
+                <div class="reputation-item">
+                    <div class="reputation-header">
+                        <span class="reputation-name">🏥 Критична інфра</span>
+                        <span class="reputation-value" id="rep-critical">92%</span>
+                    </div>
+                    <div class="reputation-bar-bg">
+                        <div class="reputation-bar high" id="rep-bar-critical" style="width: 92%"></div>
+                    </div>
+                </div>
+                <div class="reputation-item">
+                    <div class="reputation-header">
+                        <span class="reputation-name">🏛️ Влада</span>
+                        <span class="reputation-value" id="rep-govt">71%</span>
+                    </div>
+                    <div class="reputation-bar-bg">
+                        <div class="reputation-bar high" id="rep-bar-govt" style="width: 71%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Feed -->
+            <div class="events-feed" id="events-feed">
+                <div class="panel-title">📋 Події</div>
+                <div class="event-item info">
+                    <div class="event-time">07:00</div>
+                    <div class="event-text">Зміна розпочалась. Навантаження стабільне.</div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="control-btn" onclick="togglePause()">⏸️ Пауза</button>
+                <button class="control-btn" onclick="useReserve()">🔋 Резерв</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- District Panel -->
+    <div class="overlay" id="overlay" onclick="closeDistrictPanel()"></div>
+    <div class="district-panel" id="district-panel">
+        <div class="district-panel-header">
+            <div class="district-panel-title" id="panel-district-name">Оболонь</div>
+            <button class="close-btn" onclick="closeDistrictPanel()">×</button>
+        </div>
+        <div class="group-list" id="group-list">
+            <!-- Generated by JS -->
+        </div>
+        <div class="social-feed" id="social-feed">
+            <div class="panel-title">💬 Соцмережі</div>
+        </div>
+    </div>
+
+    <!-- Overload Warning -->
+    <div class="overload-warning" id="overload-warning">
+        ⚠️ ПЕРЕВАНТАЖЕННЯ!
+        <div class="sub">Терміново вимкніть групи!</div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div class="game-overlay" id="game-overlay">
+        <div class="game-over-text" id="game-over-text">БЛЕКАУТ</div>
+        <div class="game-stats" id="game-stats">
+            Ви протрималися 3 хвилі<br>
+            Максимальне навантаження: 98%
+        </div>
+        <button class="restart-btn" onclick="restartGame()">🔄 Почати знову</button>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            paused: false,
+            gameOver: false,
+            time: { hours: 7, minutes: 0 },
+            load: 72,
+            generation: 1410,
+            consumption: 1015,
+            maxLoadReached: 0,
+            currency: 100,
+            
+            // Wave system
+            wave: {
+                number: 1,
+                phase: 'prep', // prep, warning, attack, recovery
+                timeLeft: 60, // seconds
+                attackDuration: 15, // seconds of attack
+                attacksInWave: 3,
+                attacksRemaining: 0
+            },
+            
+            // Upgrades
+            upgrades: {
+                extraGeneration: { name: '⚡ +200 MW', desc: 'Додаткова генерація', cost: 50, purchased: false, effect: () => { gameState.generation += 200; } },
+                fasterRepair: { name: '🔧 Швидкий ремонт', desc: 'Ремонт за 30 сек', cost: 75, purchased: false },
+                shield: { name: '🛡️ Захист району', desc: 'Один район невразливий', cost: 100, purchased: false, active: false },
+                autoBalance: { name: '⚖️ Авто-баланс', desc: 'Авто-вимкнення при 95%', cost: 80, purchased: false },
+                reserve: { name: '🔋 Резерв', desc: '+300 MW на 10 сек', cost: 60, purchased: false, ready: true },
+                cybershield: { name: '💻 Кіберзахист', desc: 'Блокує кібератаки', cost: 120, purchased: false }
+            },
+            
+            reputation: {
+                residents: 78,
+                business: 65,
+                critical: 92,
+                govt: 71
+            },
+            districts: {
+                obolon: { name: 'Оболонь', status: 'on', power: 145, groups: [
+                    { id: '1.1', status: 'on' },
+                    { id: '1.2', status: 'on' },
+                    { id: '1.3', status: 'on' },
+                    { id: '1.4', status: 'on' }
+                ]},
+                podil: { name: 'Поділ', status: 'on', power: 98, groups: [
+                    { id: '2.1', status: 'on' },
+                    { id: '2.2', status: 'on' },
+                    { id: '2.3', status: 'on' }
+                ]},
+                shevchenko: { name: 'Шевченківський', status: 'on', power: 156, groups: [
+                    { id: '3.1', status: 'on' },
+                    { id: '3.2', status: 'on' },
+                    { id: '3.3', status: 'on' },
+                    { id: '3.4', status: 'on' }
+                ]},
+                pechersk: { name: 'Печерськ', status: 'on', power: 178, groups: [
+                    { id: '4.1', status: 'on' },
+                    { id: '4.2', status: 'on' },
+                    { id: '4.3', status: 'on' },
+                    { id: '4.4', status: 'on' }
+                ]},
+                sviatoshyn: { name: 'Святошино', status: 'on', power: 134, groups: [
+                    { id: '5.1', status: 'on' },
+                    { id: '5.2', status: 'on' },
+                    { id: '5.3', status: 'on' }
+                ]},
+                solomianka: { name: "Солом'янка", status: 'on', power: 112, groups: [
+                    { id: '6.1', status: 'on' },
+                    { id: '6.2', status: 'on' },
+                    { id: '6.3', status: 'on' }
+                ]},
+                holosiiv: { name: 'Голосіїв', status: 'on', power: 125, groups: [
+                    { id: '7.1', status: 'on' },
+                    { id: '7.2', status: 'on' },
+                    { id: '7.3', status: 'on' }
+                ]},
+                desnianskyi: { name: 'Деснянський', status: 'on', power: 167, groups: [
+                    { id: '8.1', status: 'on' },
+                    { id: '8.2', status: 'on' },
+                    { id: '8.3', status: 'on' },
+                    { id: '8.4', status: 'on' }
+                ]},
+                dnipro: { name: 'Дніпровський', status: 'on', power: 143, groups: [
+                    { id: '9.1', status: 'on' },
+                    { id: '9.2', status: 'on' },
+                    { id: '9.3', status: 'on' }
+                ]},
+                darnytsia: { name: 'Дарниця', status: 'on', power: 152, groups: [
+                    { id: '10.1', status: 'on' },
+                    { id: '10.2', status: 'on' },
+                    { id: '10.3', status: 'on' },
+                    { id: '10.4', status: 'on' }
+                ]}
+            }
+        };
+
+        let selectedDistrict = null;
+
+        // Social posts database
+        const socialPosts = {
+            positive: [
+                { author: '@киянин_щасливий', text: 'Нарешті світло є! Дякую ДТЕК 🙏', likes: 12 },
+                { author: '@мама_двох', text: 'Попередили заздалегідь, встигла все приготувати', likes: 45 },
+                { author: '@it_шник', text: 'Стабільно працює, можу кодити спокійно 💻', likes: 23 }
+            ],
+            negative: [
+                { author: '@злий_киянин', text: 'Вже 2 години без світла! Коли увімкнете?! 😤', likes: 89 },
+                { author: '@бабуся_з_оболоні', text: 'Холодно без обігрівача, скільки можна', likes: 156 },
+                { author: '@підприємець', text: 'Втрачаю гроші кожну хвилину простою!', likes: 234 }
+            ],
+            neutral: [
+                { author: '@філософ', text: 'Світло вимкнули? Час почитати книгу 📚', likes: 67 },
+                { author: '@оптиміст', text: 'Зате зірки видно! ⭐', likes: 34 }
+            ]
+        };
+
+        // Initialize
+        function init() {
+            // Add click handlers to districts
+            document.querySelectorAll('.district').forEach(district => {
+                district.addEventListener('click', () => openDistrictPanel(district.id));
+            });
+            
+            // Start game loop
+            setInterval(gameLoop, 1000);
+            
+            // Add initial event
+            addEvent('info', 'Система готова. Очікуємо ваших команд.');
+        }
+
+        // Game Loop
+        function gameLoop() {
+            if (gameState.paused) return;
+            
+            // Update time
+            gameState.time.minutes += 2;
+            if (gameState.time.minutes >= 60) {
+                gameState.time.minutes = 0;
+                gameState.time.hours++;
+                
+                // Hourly events
+                if (gameState.time.hours === 8) {
+                    addEvent('warning', 'Ранковий пік споживання! Навантаження зростає.');
+                    gameState.consumption += 150;
+                }
+                if (gameState.time.hours === 9) {
+                    addEvent('info', 'Споживання стабілізувалось.');
+                }
+            }
+            
+            // Random consumption fluctuation
+            gameState.consumption += Math.floor(Math.random() * 20) - 10;
+            gameState.consumption = Math.max(800, Math.min(1400, gameState.consumption));
+            
+            // Calculate load
+            gameState.load = Math.round((gameState.consumption / gameState.generation) * 100);
+            
+            // Update UI
+            updateUI();
+        }
+
+        // Update UI
+        function updateUI() {
+            // Time
+            const timeStr = `${String(gameState.time.hours).padStart(2, '0')}:${String(gameState.time.minutes).padStart(2, '0')}`;
+            document.getElementById('game-time').textContent = timeStr;
+            
+            // Load
+            const loadPercent = document.getElementById('load-percent');
+            const loadBar = document.getElementById('load-bar');
+            
+            loadPercent.textContent = gameState.load + '%';
+            loadBar.style.width = gameState.load + '%';
+            
+            // Load status colors
+            if (gameState.load < 75) {
+                loadPercent.className = 'load-value safe';
+                loadBar.className = 'load-bar safe';
+            } else if (gameState.load < 90) {
+                loadPercent.className = 'load-value warning';
+                loadBar.className = 'load-bar warning';
+            } else {
+                loadPercent.className = 'load-value danger';
+                loadBar.className = 'load-bar danger';
+            }
+            
+            // Stats
+            document.getElementById('generation').textContent = gameState.generation;
+            document.getElementById('consumption').textContent = gameState.consumption;
+            
+            // Reputation bars
+            updateReputationBar('residents');
+            updateReputationBar('business');
+            updateReputationBar('critical');
+            updateReputationBar('govt');
+        }
+
+        function updateReputationBar(type) {
+            const value = gameState.reputation[type];
+            const valueEl = document.getElementById(`rep-${type}`);
+            const barEl = document.getElementById(`rep-bar-${type}`);
+            
+            valueEl.textContent = value + '%';
+            barEl.style.width = value + '%';
+            
+            if (value >= 60) {
+                barEl.className = 'reputation-bar high';
+            } else if (value >= 35) {
+                barEl.className = 'reputation-bar medium';
+            } else {
+                barEl.className = 'reputation-bar low';
+            }
+        }
+
+        // District Panel
+        function openDistrictPanel(districtId) {
+            selectedDistrict = districtId;
+            const district = gameState.districts[districtId];
+            
+            document.getElementById('panel-district-name').textContent = district.name;
+            
+            // Generate groups
+            const groupList = document.getElementById('group-list');
+            groupList.innerHTML = district.groups.map(group => `
+                <div class="group-item">
+                    <span class="group-name">Група ${group.id}</span>
+                    <div class="group-status">
+                        <div class="status-indicator" style="background: ${getStatusColor(group.status)}"></div>
+                        <button class="toggle-btn ${group.status === 'on' ? 'on' : 'off'}" 
+                                onclick="toggleGroup('${districtId}', '${group.id}')">
+                            ${group.status === 'on' ? 'УВІМК' : 'ВИМК'}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Add random social posts
+            updateSocialFeed(district);
+            
+            document.getElementById('overlay').classList.add('active');
+            document.getElementById('district-panel').classList.add('active');
+        }
+
+        function closeDistrictPanel() {
+            document.getElementById('overlay').classList.remove('active');
+            document.getElementById('district-panel').classList.remove('active');
+            selectedDistrict = null;
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'on': 'var(--status-green)',
+                'scheduled': 'var(--status-yellow)',
+                'emergency': 'var(--status-orange)',
+                'damaged': 'var(--status-red)'
+            };
+            return colors[status] || colors.on;
+        }
+
+        // Toggle Group
+        function toggleGroup(districtId, groupId) {
+            const district = gameState.districts[districtId];
+            const group = district.groups.find(g => g.id === groupId);
+            
+            if (group.status === 'on') {
+                group.status = 'scheduled';
+                gameState.consumption -= 30;
+                addEvent('info', `Група ${groupId} (${district.name}) вимкнена за графіком.`);
+                
+                // Reputation impact
+                gameState.reputation.residents -= 2;
+                
+                // Add negative social post
+                addSocialPost('negative');
+            } else {
+                group.status = 'on';
+                gameState.consumption += 30;
+                addEvent('success', `Група ${groupId} (${district.name}) увімкнена.`);
+                
+                // Reputation recovery
+                gameState.reputation.residents += 1;
+                
+                // Add positive social post
+                addSocialPost('positive');
+            }
+            
+            // Update district status
+            updateDistrictStatus(districtId);
+            
+            // Refresh panel
+            openDistrictPanel(districtId);
+            updateUI();
+        }
+
+        function updateDistrictStatus(districtId) {
+            const district = gameState.districts[districtId];
+            const statuses = district.groups.map(g => g.status);
+            
+            let overallStatus = 'on';
+            if (statuses.includes('damaged')) {
+                overallStatus = 'damaged';
+            } else if (statuses.includes('emergency')) {
+                overallStatus = 'emergency';
+            } else if (statuses.includes('scheduled')) {
+                overallStatus = 'scheduled';
+            }
+            
+            district.status = overallStatus;
+            
+            // Update map
+            const districtEl = document.getElementById(districtId);
+            districtEl.className = `district status-${overallStatus}`;
+        }
+
+        // Events
+        function addEvent(type, text) {
+            const feed = document.getElementById('events-feed');
+            const timeStr = `${String(gameState.time.hours).padStart(2, '0')}:${String(gameState.time.minutes).padStart(2, '0')}`;
+            
+            const eventHtml = `
+                <div class="event-item ${type}">
+                    <div class="event-time">${timeStr}</div>
+                    <div class="event-text">${text}</div>
+                </div>
+            `;
+            
+            feed.insertAdjacentHTML('beforeend', eventHtml);
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        // Social Feed
+        function updateSocialFeed(district) {
+            const feed = document.getElementById('social-feed');
+            const offGroups = district.groups.filter(g => g.status !== 'on').length;
+            
+            let posts = [];
+            if (offGroups > 0) {
+                posts = [...socialPosts.negative.slice(0, 2), ...socialPosts.neutral.slice(0, 1)];
+            } else {
+                posts = [...socialPosts.positive.slice(0, 2), ...socialPosts.neutral.slice(0, 1)];
+            }
+            
+            feed.innerHTML = '<div class="panel-title">💬 Соцмережі</div>' + posts.map(post => `
+                <div class="social-post">
+                    <div class="social-author">${post.author}</div>
+                    <div class="social-text">${post.text}</div>
+                    <div class="social-likes">❤️ ${post.likes}</div>
+                </div>
+            `).join('');
+        }
+
+        function addSocialPost(type) {
+            const posts = socialPosts[type];
+            const post = posts[Math.floor(Math.random() * posts.length)];
+            // In a full version, this would add to a visible feed
+        }
+
+        // Controls
+        function togglePause() {
+            gameState.paused = !gameState.paused;
+            addEvent('info', gameState.paused ? '⏸️ Гра на паузі' : '▶️ Гра продовжена');
+        }
+
+        // Start
+        init();
+
+        // Render Quick Controls
+        function renderQuickControls() {
+            const grid = document.getElementById('districts-grid');
+            
+            grid.innerHTML = Object.entries(gameState.districts).map(([id, district]) => {
+                const onCount = district.groups.filter(g => g.status === 'on').length;
+                const offCount = district.groups.filter(g => g.status === 'scheduled' || g.status === 'emergency').length;
+                const dmgCount = district.groups.filter(g => g.status === 'damaged').length;
+                
+                let cardClass = 'district-control';
+                if (dmgCount > 0) cardClass += ' has-damaged';
+                else if (offCount > 0) cardClass += ' has-off';
+                
+                const currentPower = district.groups.reduce((sum, g) => {
+                    if (g.status === 'on') return sum + Math.round(district.power / district.groups.length);
+                    return sum;
+                }, 0);
+                
+                return `
+                    <div class="${cardClass}" data-district="${id}">
+                        <div class="district-control-header">
+                            <div class="district-control-name">${district.name}</div>
+                            <div class="district-control-power">${currentPower} MW</div>
+                        </div>
+                        <div class="group-toggles">
+                            ${district.groups.map(group => `
+                                <button class="group-toggle ${group.status}" 
+                                        onclick="quickToggleGroup('${id}', '${group.id}')"
+                                        title="Група ${group.id} - ${getStatusText(group.status)}"
+                                        ${group.status === 'damaged' ? 'disabled' : ''}>
+                                    ${group.id.split('.')[1]}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div class="district-control-stats">
+                            <span class="stat-on">● ${onCount} увімк</span>
+                            <span class="stat-off">${offCount > 0 ? '○ ' + offCount + ' вимк' : ''}</span>
+                            <span class="stat-dmg">${dmgCount > 0 ? '✕ ' + dmgCount + ' пошк' : ''}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getStatusText(status) {
+            const texts = {
+                'on': 'Увімкнено',
+                'scheduled': 'Вимкнено за графіком',
+                'emergency': 'Аварійне відключення',
+                'damaged': 'Пошкоджено'
+            };
+            return texts[status] || status;
+        }
+
+        function quickToggleGroup(districtId, groupId) {
+            const district = gameState.districts[districtId];
+            const group = district.groups.find(g => g.id === groupId);
+            
+            if (group.status === 'damaged') return;
+            
+            const groupPower = Math.round(district.power / district.groups.length);
+            
+            if (group.status === 'on') {
+                group.status = 'scheduled';
+                gameState.consumption -= groupPower;
+                addEvent('info', `⚡ Група ${groupId} (${district.name}) вимкнена. -${groupPower} MW`);
+                gameState.reputation.residents -= 2;
+            } else {
+                group.status = 'on';
+                gameState.consumption += groupPower;
+                addEvent('success', `✓ Група ${groupId} (${district.name}) увімкнена. +${groupPower} MW`);
+                gameState.reputation.residents += 1;
+            }
+            
+            updateDistrictStatus(districtId);
+            renderQuickControls();
+            updateUI();
+        }
+
+        function enableAllGroups() {
+            let restored = 0;
+            Object.entries(gameState.districts).forEach(([id, district]) => {
+                district.groups.forEach(group => {
+                    if (group.status === 'scheduled' || group.status === 'emergency') {
+                        const groupPower = Math.round(district.power / district.groups.length);
+                        group.status = 'on';
+                        gameState.consumption += groupPower;
+                        restored++;
+                    }
+                });
+                updateDistrictStatus(id);
+            });
+            
+            if (restored > 0) {
+                addEvent('success', `✓ Увімкнено ${restored} груп. Навантаження зросло.`);
+                gameState.reputation.residents += Math.min(restored, 5);
+            } else {
+                addEvent('info', 'Всі групи вже увімкнені.');
+            }
+            
+            renderQuickControls();
+            updateUI();
+        }
+
+        function emergencyShutdown() {
+            const districts = Object.entries(gameState.districts);
+            const randomDistrict = districts[Math.floor(Math.random() * districts.length)];
+            const [id, district] = randomDistrict;
+            
+            const onGroups = district.groups.filter(g => g.status === 'on');
+            if (onGroups.length > 0) {
+                const groupsToShutdown = onGroups.slice(0, Math.min(2, onGroups.length));
+                groupsToShutdown.forEach(group => {
+                    const groupPower = Math.round(district.power / district.groups.length);
+                    group.status = 'emergency';
+                    gameState.consumption -= groupPower;
+                });
+                
+                updateDistrictStatus(id);
+                addEvent('warning', `⚠️ Аварійне відключення: ${district.name}, ${groupsToShutdown.length} груп`);
+                gameState.reputation.residents -= 8;
+                gameState.reputation.business -= 5;
+                
+                renderQuickControls();
+                updateUI();
+            }
+        }
+
+        // Update init to render quick controls
+        const originalInit = init;
+        init = function() {
+            // Add click handlers to districts
+            document.querySelectorAll('.district').forEach(district => {
+                district.addEventListener('click', () => openDistrictPanel(district.id));
+            });
+            
+            // Render quick controls
+            renderQuickControls();
+            
+            // Start game loop
+            setInterval(gameLoop, 1000);
+            
+            // Add initial event
+            addEvent('info', 'Система готова. Очікуємо ваших команд.');
+        };
+
+        // Update game loop to refresh quick controls periodically
+        const originalGameLoop = gameLoop;
+        gameLoop = function() {
+            if (gameState.paused) return;
+            
+            // Update time
+            gameState.time.minutes += 2;
+            if (gameState.time.minutes >= 60) {
+                gameState.time.minutes = 0;
+                gameState.time.hours++;
+                
+                // Hourly events
+                if (gameState.time.hours === 8) {
+                    addEvent('warning', 'Ранковий пік споживання! Навантаження зростає.');
+                    gameState.consumption += 150;
+                }
+                if (gameState.time.hours === 9) {
+                    addEvent('info', 'Споживання стабілізувалось.');
+                }
+                
+                // Refresh quick controls every hour
+                renderQuickControls();
+            }
+            
+            // Random consumption fluctuation
+            gameState.consumption += Math.floor(Math.random() * 20) - 10;
+            gameState.consumption = Math.max(800, Math.min(1400, gameState.consumption));
+            
+            // Calculate load
+            gameState.load = Math.round((gameState.consumption / gameState.generation) * 100);
+            
+            // Update UI
+            updateUI();
+        };
+
+        // Call init
+        init();
+        
+        // Wave Timer Loop (runs every second)
+        setInterval(waveLoop, 1000);
+        
+        function waveLoop() {
+            if (gameState.paused || gameState.gameOver) return;
+            
+            const wave = gameState.wave;
+            wave.timeLeft--;
+            
+            // Update wave UI
+            updateWaveUI();
+            
+            // Phase transitions
+            if (wave.phase === 'prep' && wave.timeLeft <= 10) {
+                wave.phase = 'warning';
+                addEvent('warning', `⚠️ Хвиля ${wave.number} наближається! 10 секунд до атаки!`);
+                document.getElementById('alert-banner').classList.add('active');
+                document.getElementById('alert-text').textContent = `УВАГА: Хвиля ${wave.number} через ${wave.timeLeft} сек!`;
+            }
+            
+            if (wave.phase === 'warning' && wave.timeLeft <= 0) {
+                startAttackPhase();
+            }
+            
+            if (wave.phase === 'attack') {
+                // Random attacks during attack phase
+                if (Math.random() < 0.3 && wave.attacksRemaining > 0) {
+                    performAttack();
+                    wave.attacksRemaining--;
+                }
+                
+                // Increase consumption during attack (stress on grid)
+                gameState.consumption += Math.floor(Math.random() * 30);
+                
+                if (wave.timeLeft <= 0) {
+                    endAttackPhase();
+                }
+            }
+            
+            // Check overload
+            checkOverload();
+            
+            // Update alert banner during warning
+            if (wave.phase === 'warning') {
+                document.getElementById('alert-text').textContent = `УВАГА: Атака через ${wave.timeLeft} сек!`;
+            }
+        }
+        
+        function updateWaveUI() {
+            const wave = gameState.wave;
+            const countdown = document.getElementById('wave-countdown');
+            const status = document.getElementById('wave-status');
+            const timer = document.getElementById('wave-timer');
+            const waveNum = document.getElementById('wave-number');
+            
+            waveNum.textContent = `Хвиля ${wave.number}`;
+            
+            const mins = Math.floor(wave.timeLeft / 60);
+            const secs = wave.timeLeft % 60;
+            countdown.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+            
+            // Update timer progress bar
+            let totalTime = wave.phase === 'attack' ? wave.attackDuration : 60;
+            let progress = ((totalTime - wave.timeLeft) / totalTime) * 100;
+            timer.style.setProperty('--progress', progress + '%');
+            timer.querySelector('::before')?.style?.setProperty('width', progress + '%');
+            
+            if (wave.phase === 'prep') {
+                countdown.className = 'wave-countdown';
+                status.className = 'wave-status prep';
+                status.textContent = '🛡️ Час на підготовку';
+                timer.className = 'wave-timer';
+            } else if (wave.phase === 'warning') {
+                countdown.className = 'wave-countdown danger';
+                status.className = 'wave-status incoming';
+                status.textContent = '⚠️ Атака наближається!';
+                timer.className = 'wave-timer danger';
+            } else if (wave.phase === 'attack') {
+                countdown.className = 'wave-countdown attack';
+                status.className = 'wave-status attack';
+                status.textContent = `🔥 АТАКА! Залишилось ударів: ${wave.attacksRemaining}`;
+                timer.className = 'wave-timer danger';
+            }
+        }
+        
+        function startAttackPhase() {
+            const wave = gameState.wave;
+            wave.phase = 'attack';
+            wave.timeLeft = wave.attackDuration;
+            wave.attacksRemaining = wave.attacksInWave + Math.floor(wave.number / 2);
+            
+            addEvent('alert', `🔥 ХВИЛЯ ${wave.number} ПОЧАЛАСЬ! Очікується ${wave.attacksRemaining} ударів!`);
+            document.getElementById('alert-text').textContent = `АТАКА ХВИЛІ ${wave.number}!`;
+            
+            // Play attack sound effect (visual shake)
+            document.body.style.animation = 'none';
+            setTimeout(() => {
+                document.body.style.animation = 'shake 0.5s';
+            }, 10);
+        }
+        
+        function performAttack() {
+            // Select random district
+            const districtIds = Object.keys(gameState.districts);
+            
+            // Check for shield upgrade
+            let targetId;
+            if (gameState.upgrades.shield.purchased && gameState.upgrades.shield.active) {
+                // Avoid shielded district (first one for simplicity)
+                const available = districtIds.filter(id => id !== 'pechersk');
+                targetId = available[Math.floor(Math.random() * available.length)];
+            } else {
+                targetId = districtIds[Math.floor(Math.random() * districtIds.length)];
+            }
+            
+            const district = gameState.districts[targetId];
+            
+            // Find a working group to damage
+            const workingGroups = district.groups.filter(g => g.status === 'on' || g.status === 'scheduled');
+            
+            if (workingGroups.length > 0) {
+                const targetGroup = workingGroups[Math.floor(Math.random() * workingGroups.length)];
+                const groupPower = Math.round(district.power / district.groups.length);
+                
+                // Damage the group
+                if (targetGroup.status === 'on') {
+                    gameState.consumption -= groupPower;
+                }
+                targetGroup.status = 'damaged';
+                updateDistrictStatus(targetId);
+                
+                addEvent('alert', `💥 Удар по ${district.name}! Група ${targetGroup.id} пошкоджена!`);
+                
+                // Visual feedback on map
+                const districtEl = document.getElementById(targetId);
+                districtEl.style.animation = 'none';
+                setTimeout(() => {
+                    districtEl.style.animation = 'flash 0.3s 3';
+                }, 10);
+                
+                // Schedule repair
+                const repairTime = gameState.upgrades.fasterRepair.purchased ? 30000 : 60000;
+                setTimeout(() => {
+                    if (targetGroup.status === 'damaged') {
+                        targetGroup.status = 'on';
+                        gameState.consumption += groupPower;
+                        updateDistrictStatus(targetId);
+                        addEvent('success', `✓ Група ${targetGroup.id} (${district.name}) відремонтована!`);
+                        renderQuickControls();
+                        updateUI();
+                    }
+                }, repairTime);
+                
+                renderQuickControls();
+                updateUI();
+            }
+        }
+        
+        function endAttackPhase() {
+            const wave = gameState.wave;
+            
+            document.getElementById('alert-banner').classList.remove('active');
+            
+            // Reward for surviving
+            const reward = 50 + wave.number * 25;
+            gameState.currency += reward;
+            
+            addEvent('success', `✓ Хвиля ${wave.number} пережита! +${reward} 💰`);
+            
+            // Prepare next wave
+            wave.number++;
+            wave.phase = 'prep';
+            wave.timeLeft = 60;
+            wave.attacksInWave = Math.min(3 + wave.number, 10);
+            wave.attackDuration = Math.min(15 + wave.number * 2, 30);
+            
+            // Normalize consumption
+            gameState.consumption = Math.max(800, gameState.consumption - 100);
+            
+            renderUpgrades();
+            updateUI();
+            
+            // Victory check (survived 10 waves)
+            if (wave.number > 10) {
+                victory();
+            }
+        }
+        
+        function checkOverload() {
+            gameState.load = Math.round((gameState.consumption / gameState.generation) * 100);
+            
+            // Track max load
+            if (gameState.load > gameState.maxLoadReached) {
+                gameState.maxLoadReached = gameState.load;
+            }
+            
+            const warning = document.getElementById('overload-warning');
+            
+            // Auto-balance upgrade
+            if (gameState.upgrades.autoBalance.purchased && gameState.load >= 95) {
+                autoBalanceGrid();
+            }
+            
+            if (gameState.load >= 90 && gameState.load < 100) {
+                warning.classList.add('active');
+            } else {
+                warning.classList.remove('active');
+            }
+            
+            // Game over at 100%
+            if (gameState.load >= 100) {
+                gameOver();
+            }
+        }
+        
+        function autoBalanceGrid() {
+            // Find an ON group and turn it off
+            for (const [id, district] of Object.entries(gameState.districts)) {
+                const onGroup = district.groups.find(g => g.status === 'on');
+                if (onGroup) {
+                    const groupPower = Math.round(district.power / district.groups.length);
+                    onGroup.status = 'scheduled';
+                    gameState.consumption -= groupPower;
+                    updateDistrictStatus(id);
+                    addEvent('info', `⚖️ Авто-баланс: вимкнено групу ${onGroup.id} (${district.name})`);
+                    renderQuickControls();
+                    break;
+                }
+            }
+        }
+        
+        function gameOver() {
+            gameState.gameOver = true;
+            const overlay = document.getElementById('game-overlay');
+            const text = document.getElementById('game-over-text');
+            const stats = document.getElementById('game-stats');
+            
+            text.textContent = '⚫ БЛЕКАУТ';
+            text.className = 'game-over-text defeat';
+            stats.innerHTML = `
+                Ви протрималися ${gameState.wave.number - 1} хвиль<br>
+                Максимальне навантаження: ${gameState.maxLoadReached}%<br>
+                Зароблено: ${gameState.currency} 💰
+            `;
+            
+            overlay.classList.add('active');
+            document.getElementById('alert-banner').classList.remove('active');
+            document.getElementById('overload-warning').classList.remove('active');
+        }
+        
+        function victory() {
+            gameState.gameOver = true;
+            const overlay = document.getElementById('game-overlay');
+            const text = document.getElementById('game-over-text');
+            const stats = document.getElementById('game-stats');
+            
+            text.textContent = '🏆 ПЕРЕМОГА!';
+            text.className = 'game-over-text victory';
+            stats.innerHTML = `
+                Ви пережили всі 10 хвиль!<br>
+                Максимальне навантаження: ${gameState.maxLoadReached}%<br>
+                Зароблено: ${gameState.currency} 💰
+            `;
+            
+            overlay.classList.add('active');
+        }
+        
+        function restartGame() {
+            location.reload();
+        }
+        
+        // Upgrades
+        function renderUpgrades() {
+            const grid = document.getElementById('upgrades-grid');
+            document.getElementById('currency').textContent = gameState.currency;
+            
+            grid.innerHTML = Object.entries(gameState.upgrades).map(([id, upgrade]) => {
+                const canAfford = gameState.currency >= upgrade.cost;
+                const purchased = upgrade.purchased;
+                
+                return `
+                    <button class="upgrade-btn ${purchased ? 'purchased' : ''}" 
+                            onclick="buyUpgrade('${id}')"
+                            ${purchased || !canAfford ? 'disabled' : ''}>
+                        <div class="upgrade-name">${upgrade.name}</div>
+                        <div class="upgrade-desc">${upgrade.desc}</div>
+                        ${!purchased ? `<div class="upgrade-cost">💰 ${upgrade.cost}</div>` : '<div class="upgrade-cost">✓ Куплено</div>'}
+                    </button>
+                `;
+            }).join('');
+        }
+        
+        function buyUpgrade(id) {
+            const upgrade = gameState.upgrades[id];
+            
+            if (gameState.currency >= upgrade.cost && !upgrade.purchased) {
+                gameState.currency -= upgrade.cost;
+                upgrade.purchased = true;
+                
+                // Apply immediate effects
+                if (upgrade.effect) {
+                    upgrade.effect();
+                }
+                
+                if (id === 'shield') {
+                    upgrade.active = true;
+                    addEvent('success', `🛡️ Печерськ тепер під захистом!`);
+                }
+                
+                addEvent('info', `🔧 Куплено: ${upgrade.name}`);
+                renderUpgrades();
+                updateUI();
+            }
+        }
+        
+        function useReserve() {
+            const reserve = gameState.upgrades.reserve;
+            if (reserve.purchased && reserve.ready) {
+                reserve.ready = false;
+                gameState.generation += 300;
+                addEvent('success', '🔋 Резерв активовано! +300 MW на 10 секунд');
+                
+                setTimeout(() => {
+                    gameState.generation -= 300;
+                    reserve.ready = true;
+                    addEvent('info', '🔋 Резерв вичерпано');
+                    renderUpgrades();
+                }, 10000);
+                
+                renderUpgrades();
+                updateUI();
+            }
+        }
+        
+        // Add shake animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+            @keyframes flash {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.3; filter: brightness(2); }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initial render
+        renderUpgrades();
+    </script>
+</body>
+</html>
