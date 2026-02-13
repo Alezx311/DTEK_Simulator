@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ДТЕК Simulator v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #12171f;
+            --bg-panel: #1a1f2a;
+            --border: #2a3140;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #565d67;
+            --accent-blue: #58a6ff;
+            --accent-cyan: #39c5cf;
+            --status-green: #3fb950;
+            --status-yellow: #d29922;
+            --status-orange: #db6d28;
+            --status-red: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header - Fixed */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 20px var(--accent-cyan);
+        }
+
+        .logo span { color: var(--status-yellow); }
+
+        .header-center {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .wave-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-panel);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .wave-info.danger {
+            border-color: var(--status-red);
+            background: rgba(248, 81, 73, 0.1);
+            animation: pulseBorder 0.5s infinite;
+        }
+
+        @keyframes pulseBorder {
+            0%, 100% { box-shadow: 0 0 10px rgba(248, 81, 73, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(248, 81, 73, 0.6); }
+        }
+
+        .wave-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .wave-number {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .wave-timer {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.3rem;
+            font-weight: 700;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .wave-timer.safe { color: var(--status-green); }
+        .wave-timer.warning { color: var(--status-yellow); }
+        .wave-timer.danger { color: var(--status-red); animation: pulse 0.5s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .load-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-panel);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .load-display.danger {
+            border-color: var(--status-red);
+            background: rgba(248, 81, 73, 0.15);
+        }
+
+        .load-bar-mini {
+            width: 100px;
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .load-bar-fill {
+            height: 100%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .load-bar-fill.safe { background: var(--status-green); }
+        .load-bar-fill.warning { background: var(--status-yellow); }
+        .load-bar-fill.danger { background: var(--status-red); }
+
+        .load-percent {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            min-width: 45px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .currency-display {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--status-yellow);
+            font-size: 0.9rem;
+        }
+
+        .pause-btn {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .pause-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Map Area */
+        .map-area {
+            flex: 1;
+            padding: 12px;
+            overflow: auto;
+        }
+
+        .map-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            height: 100%;
+            min-height: 500px;
+        }
+
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 8px;
+            padding: 12px;
+            height: 100%;
+        }
+
+        /* District Card */
+        .district-card {
+            background: var(--bg-panel);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s;
+        }
+
+        .district-card:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .district-card.has-damage {
+            border-color: var(--status-red);
+            background: rgba(248, 81, 73, 0.05);
+        }
+
+        .district-card.has-off {
+            border-color: var(--status-yellow);
+        }
+
+        .district-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .district-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .district-power {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--accent-cyan);
+        }
+
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
+            flex: 1;
+        }
+
+        .group-btn {
+            background: var(--bg-primary);
+            border: 2px solid var(--status-green);
+            border-radius: 6px;
+            padding: 6px 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+
+        .group-btn:hover:not(.damaged) {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(88, 166, 255, 0.3);
+        }
+
+        .group-btn.on {
+            background: rgba(63, 185, 80, 0.15);
+            border-color: var(--status-green);
+            box-shadow: 0 0 10px rgba(63, 185, 80, 0.2);
+        }
+
+        .group-btn.off {
+            background: rgba(210, 153, 34, 0.15);
+            border-color: var(--status-yellow);
+        }
+
+        .group-btn.damaged {
+            background: rgba(248, 81, 73, 0.2);
+            border-color: var(--status-red);
+            cursor: not-allowed;
+            animation: damagePulse 1s infinite;
+        }
+
+        @keyframes damagePulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(248, 81, 73, 0.3); }
+            50% { box-shadow: 0 0 15px rgba(248, 81, 73, 0.6); }
+        }
+
+        .group-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .group-btn.on .group-id { color: var(--status-green); }
+        .group-btn.off .group-id { color: var(--status-yellow); }
+        .group-btn.damaged .group-id { color: var(--status-red); }
+
+        .group-power {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* Upgrades */
+        .upgrades-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .upgrade-btn {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+        }
+
+        .upgrade-btn:hover:not(:disabled) {
+            border-color: var(--accent-blue);
+            background: rgba(88, 166, 255, 0.1);
+        }
+
+        .upgrade-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upgrade-btn.purchased {
+            border-color: var(--status-green);
+            background: rgba(63, 185, 80, 0.1);
+        }
+
+        .upgrade-info {
+            flex: 1;
+        }
+
+        .upgrade-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .upgrade-desc {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .upgrade-cost {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--status-yellow);
+        }
+
+        /* Events */
+        .events-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .event-item {
+            background: var(--bg-panel);
+            padding: 8px 10px;
+            border-radius: 4px;
+            border-left: 3px solid var(--border);
+            font-size: 0.75rem;
+        }
+
+        .event-item.alert { border-left-color: var(--status-red); }
+        .event-item.warning { border-left-color: var(--status-yellow); }
+        .event-item.success { border-left-color: var(--status-green); }
+        .event-item.info { border-left-color: var(--accent-blue); }
+
+        .event-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .event-text {
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* Quick Actions Bar - Fixed at bottom */
+        .quick-actions {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 10px 16px;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .action-btn {
+            flex: 1;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .action-btn.danger:hover {
+            border-color: var(--status-red);
+            color: var(--status-red);
+        }
+
+        .action-btn.success:hover {
+            border-color: var(--status-green);
+            color: var(--status-green);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            flex-direction: column;
+        }
+
+        .overlay.active { display: flex; }
+
+        .overlay-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .overlay-title.defeat { color: var(--status-red); text-shadow: 0 0 40px var(--status-red); }
+        .overlay-title.victory { color: var(--status-green); text-shadow: 0 0 40px var(--status-green); }
+
+        .overlay-stats {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        .overlay-btn {
+            background: var(--accent-blue);
+            border: none;
+            color: white;
+            padding: 14px 40px;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .overlay-btn:hover {
+            background: #4a9aef;
+        }
+
+        /* Overload Warning */
+        .overload-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(248, 81, 73, 0.95);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            z-index: 150;
+            display: none;
+            text-align: center;
+        }
+
+        .overload-banner.active {
+            display: block;
+            animation: overloadPulse 0.5s infinite;
+        }
+
+        @keyframes overloadPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.02); }
+        }
+
+        /* Attack indicator */
+        .attack-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(248, 81, 73, 0.3);
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+        }
+
+        .attack-flash.active {
+            display: block;
+            animation: flashOnce 0.3s;
+        }
+
+        @keyframes flashOnce {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">ДТЕК <span>Simulator</span></div>
+        
+        <div class="header-center">
+            <div class="wave-info" id="wave-info">
+                <span class="wave-label">ХВИЛЯ</span>
+                <span class="wave-number" id="wave-number">1</span>
+                <span class="wave-timer safe" id="wave-timer">0:45</span>
+            </div>
+            
+            <div class="load-display" id="load-display">
+                <span class="wave-label">МЕРЕЖА</span>
+                <div class="load-bar-mini">
+                    <div class="load-bar-fill safe" id="load-bar" style="width: 65%"></div>
+                </div>
+                <span class="load-percent" id="load-percent">65%</span>
+            </div>
+        </div>
+        
+        <div class="header-right">
+            <span class="currency-display">💰 <span id="currency">100</span></span>
+            <button class="pause-btn" onclick="togglePause()" id="pause-btn">⏸️ ПАУЗА</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Map Area -->
+        <div class="map-area">
+            <div class="map-container">
+                <div class="map-grid" id="map-grid">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+            <div class="panel-section">
+                <div class="panel-title">🔧 Покращення</div>
+                <div class="upgrades-grid" id="upgrades-grid"></div>
+            </div>
+            
+            <div class="panel-section" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <div class="panel-title">📋 Події</div>
+                <div class="events-list" id="events-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <button class="action-btn success" onclick="enableAll()">✓ Увімкнути все</button>
+        <button class="action-btn" onclick="useReserve()" id="reserve-btn">🔋 Резерв +300MW</button>
+        <button class="action-btn danger" onclick="emergencyOff()">⚠️ Аварійне -3 групи</button>
+    </div>
+
+    <!-- Overlays -->
+    <div class="overlay" id="game-overlay">
+        <div class="overlay-title" id="overlay-title">БЛЕКАУТ</div>
+        <div class="overlay-stats" id="overlay-stats"></div>
+        <button class="overlay-btn" onclick="location.reload()">🔄 Почати знову</button>
+    </div>
+
+    <div class="overload-banner" id="overload-banner">
+        ⚠️ ПЕРЕВАНТАЖЕННЯ!<br>
+        <span style="font-size: 0.8rem; font-weight: 400;">Вимкніть групи негайно!</span>
+    </div>
+
+    <div class="attack-flash" id="attack-flash"></div>
+
+    <script>
+        // ============ GAME STATE ============
+        const gameState = {
+            paused: false,
+            gameOver: false,
+            generation: 1200,
+            consumption: 780,
+            load: 65,
+            maxLoad: 65,
+            currency: 100,
+            wavesCompleted: 0,
+            
+            wave: {
+                number: 1,
+                phase: 'prep', // prep, attack
+                timeLeft: 45,
+                attacksLeft: 0
+            },
+            
+            upgrades: {
+                generation: { name: '⚡ +250 MW', desc: 'Більше потужності', cost: 60, bought: false },
+                repair: { name: '🔧 Швидкий ремонт', desc: 'Ремонт 20с', cost: 80, bought: false },
+                autoOff: { name: '⚖️ Авто-баланс', desc: 'Авто-вимк при 92%', cost: 100, bought: false },
+                shield: { name: '🛡️ Захист центру', desc: 'Печерськ захищено', cost: 120, bought: false }
+            },
+            
+            districts: {}
+        };
+
+        // Initialize districts with groups
+        const districtData = [
+            { id: 'obolon', name: 'Оболонь', power: 120, groups: 4 },
+            { id: 'podil', name: 'Поділ', power: 90, groups: 3 },
+            { id: 'shevchenko', name: 'Шевченко', power: 130, groups: 4 },
+            { id: 'sviatoshyn', name: 'Святошино', power: 110, groups: 3 },
+            { id: 'solomianka', name: "Солом'янка", power: 95, groups: 3 },
+            { id: 'pechersk', name: 'Печерськ', power: 140, groups: 4 },
+            { id: 'holosiiv', name: 'Голосіїв', power: 100, groups: 3 },
+            { id: 'desnianskyi', name: 'Деснянський', power: 135, groups: 4 },
+            { id: 'dnipro', name: 'Дніпровський', power: 115, groups: 3 },
+            { id: 'darnytsia', name: 'Дарниця', power: 125, groups: 4 }
+        ];
+
+        districtData.forEach(d => {
+            const groups = [];
+            for (let i = 1; i <= d.groups; i++) {
+                groups.push({
+                    id: `${d.id}-${i}`,
+                    status: 'on', // on, off, damaged
+                    power: Math.round(d.power / d.groups)
+                });
+            }
+            gameState.districts[d.id] = {
+                name: d.name,
+                power: d.power,
+                groups: groups
+            };
+        });
+
+        // ============ INITIALIZATION ============
+        function init() {
+            renderMap();
+            renderUpgrades();
+            addEvent('info', 'Система запущена. Підготуйтесь до першої хвилі!');
+            
+            // Main game loop - runs every second
+            setInterval(gameTick, 1000);
+            
+            // Fast update loop for smooth UI
+            setInterval(updateUI, 100);
+        }
+
+        // ============ GAME LOOP ============
+        function gameTick() {
+            if (gameState.paused || gameState.gameOver) return;
+            
+            const wave = gameState.wave;
+            wave.timeLeft--;
+            
+            // Phase changes
+            if (wave.phase === 'prep') {
+                if (wave.timeLeft <= 0) {
+                    startAttack();
+                } else if (wave.timeLeft === 10) {
+                    addEvent('warning', `⚠️ Атака через 10 секунд!`);
+                }
+            } else if (wave.phase === 'attack') {
+                // Perform attacks
+                if (wave.attacksLeft > 0 && Math.random() < 0.4) {
+                    performAttack();
+                    wave.attacksLeft--;
+                }
+                
+                // Increase load during attack
+                gameState.consumption += 15 + gameState.wave.number * 3;
+                
+                if (wave.timeLeft <= 0 || wave.attacksLeft <= 0) {
+                    endWave();
+                }
+            }
+            
+            // Random consumption fluctuation
+            gameState.consumption += Math.floor(Math.random() * 20) - 8;
+            gameState.consumption = Math.max(600, gameState.consumption);
+            
+            // Auto-balance upgrade
+            if (gameState.upgrades.autoOff.bought && gameState.load >= 92) {
+                autoBalance();
+            }
+            
+            // Check game over
+            checkOverload();
+        }
+
+        function startAttack() {
+            const wave = gameState.wave;
+            wave.phase = 'attack';
+            wave.timeLeft = 12 + wave.number * 2;
+            wave.attacksLeft = 2 + wave.number;
+            
+            addEvent('alert', `🔥 ХВИЛЯ ${wave.number}! Очікується ${wave.attacksLeft} ударів!`);
+            
+            document.getElementById('wave-info').classList.add('danger');
+        }
+
+        function performAttack() {
+            // Flash effect
+            const flash = document.getElementById('attack-flash');
+            flash.classList.remove('active');
+            setTimeout(() => flash.classList.add('active'), 10);
+            
+            // Select target
+            const districtIds = Object.keys(gameState.districts);
+            let targetId;
+            
+            // Shield protects Pechersk
+            if (gameState.upgrades.shield.bought) {
+                const available = districtIds.filter(id => id !== 'pechersk');
+                targetId = available[Math.floor(Math.random() * available.length)];
+            } else {
+                targetId = districtIds[Math.floor(Math.random() * districtIds.length)];
+            }
+            
+            const district = gameState.districts[targetId];
+            const workingGroups = district.groups.filter(g => g.status !== 'damaged');
+            
+            if (workingGroups.length > 0) {
+                const target = workingGroups[Math.floor(Math.random() * workingGroups.length)];
+                
+                if (target.status === 'on') {
+                    gameState.consumption -= target.power;
+                }
+                target.status = 'damaged';
+                
+                addEvent('alert', `💥 Удар! ${district.name} група ${target.id.split('-')[1]} пошкоджена!`);
+                
+                // Schedule repair
+                const repairTime = gameState.upgrades.repair.bought ? 20000 : 45000;
+                setTimeout(() => repairGroup(targetId, target.id), repairTime);
+                
+                renderMap();
+            }
+        }
+
+        function repairGroup(districtId, groupId) {
+            const district = gameState.districts[districtId];
+            const group = district.groups.find(g => g.id === groupId);
+            
+            if (group && group.status === 'damaged') {
+                group.status = 'on';
+                gameState.consumption += group.power;
+                addEvent('success', `✓ ${district.name} група ${groupId.split('-')[1]} відремонтована!`);
+                renderMap();
+            }
+        }
+
+        function endWave() {
+            const wave = gameState.wave;
+            
+            // Reward
+            const reward = 40 + wave.number * 20;
+            gameState.currency += reward;
+            gameState.wavesCompleted++;
+            
+            addEvent('success', `✓ Хвиля ${wave.number} пережита! +${reward}💰`);
+            
+            // Normalize consumption
+            gameState.consumption = Math.max(650, gameState.consumption - 150);
+            
+            // Next wave
+            wave.number++;
+            wave.phase = 'prep';
+            wave.timeLeft = Math.max(30, 45 - wave.number * 2); // Less prep time each wave
+            
+            document.getElementById('wave-info').classList.remove('danger');
+            
+            renderUpgrades();
+            
+            // Victory at wave 15
+            if (wave.number > 15) {
+                victory();
+            }
+        }
+
+        function checkOverload() {
+            gameState.load = Math.round((gameState.consumption / gameState.generation) * 100);
+            gameState.maxLoad = Math.max(gameState.maxLoad, gameState.load);
+            
+            const banner = document.getElementById('overload-banner');
+            
+            if (gameState.load >= 85) {
+                banner.classList.add('active');
+            } else {
+                banner.classList.remove('active');
+            }
+            
+            if (gameState.load >= 100) {
+                gameOver();
+            }
+        }
+
+        function autoBalance() {
+            for (const district of Object.values(gameState.districts)) {
+                const onGroup = district.groups.find(g => g.status === 'on');
+                if (onGroup) {
+                    onGroup.status = 'off';
+                    gameState.consumption -= onGroup.power;
+                    addEvent('info', `⚖️ Авто: вимкнено ${district.name}`);
+                    renderMap();
+                    break;
+                }
+            }
+        }
+
+        // ============ UI RENDERING ============
+        function renderMap() {
+            const grid = document.getElementById('map-grid');
+            
+            grid.innerHTML = Object.entries(gameState.districts).map(([id, district]) => {
+                const hasDamage = district.groups.some(g => g.status === 'damaged');
+                const hasOff = district.groups.some(g => g.status === 'off');
+                const currentPower = district.groups
+                    .filter(g => g.status === 'on')
+                    .reduce((sum, g) => sum + g.power, 0);
+                
+                let cardClass = 'district-card';
+                if (hasDamage) cardClass += ' has-damage';
+                else if (hasOff) cardClass += ' has-off';
+                
+                return `
+                    <div class="${cardClass}">
+                        <div class="district-header">
+                            <span class="district-name">${district.name}</span>
+                            <span class="district-power">${currentPower}MW</span>
+                        </div>
+                        <div class="groups-grid">
+                            ${district.groups.map(group => `
+                                <button class="group-btn ${group.status}" 
+                                        onclick="toggleGroup('${id}', '${group.id}')"
+                                        ${group.status === 'damaged' ? 'disabled' : ''}>
+                                    <span class="group-id">${group.id.split('-')[1]}</span>
+                                    <span class="group-power">${group.power}MW</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderUpgrades() {
+            const grid = document.getElementById('upgrades-grid');
+            document.getElementById('currency').textContent = gameState.currency;
+            
+            grid.innerHTML = Object.entries(gameState.upgrades).map(([id, upg]) => {
+                const canBuy = gameState.currency >= upg.cost && !upg.bought;
+                return `
+                    <button class="upgrade-btn ${upg.bought ? 'purchased' : ''}"
+                            onclick="buyUpgrade('${id}')"
+                            ${!canBuy ? 'disabled' : ''}>
+                        <div class="upgrade-info">
+                            <div class="upgrade-name">${upg.name}</div>
+                            <div class="upgrade-desc">${upg.desc}</div>
+                        </div>
+                        <div class="upgrade-cost">${upg.bought ? '✓' : upg.cost + '💰'}</div>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function updateUI() {
+            const wave = gameState.wave;
+            
+            // Wave timer
+            const mins = Math.floor(wave.timeLeft / 60);
+            const secs = wave.timeLeft % 60;
+            const timerEl = document.getElementById('wave-timer');
+            timerEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+            
+            if (wave.phase === 'attack') {
+                timerEl.className = 'wave-timer danger';
+            } else if (wave.timeLeft <= 10) {
+                timerEl.className = 'wave-timer warning';
+            } else {
+                timerEl.className = 'wave-timer safe';
+            }
+            
+            document.getElementById('wave-number').textContent = wave.number;
+            
+            // Load
+            const loadEl = document.getElementById('load-percent');
+            const loadBar = document.getElementById('load-bar');
+            const loadDisplay = document.getElementById('load-display');
+            
+            loadEl.textContent = gameState.load + '%';
+            loadBar.style.width = Math.min(100, gameState.load) + '%';
+            
+            if (gameState.load >= 85) {
+                loadEl.style.color = 'var(--status-red)';
+                loadBar.className = 'load-bar-fill danger';
+                loadDisplay.classList.add('danger');
+            } else if (gameState.load >= 70) {
+                loadEl.style.color = 'var(--status-yellow)';
+                loadBar.className = 'load-bar-fill warning';
+                loadDisplay.classList.remove('danger');
+            } else {
+                loadEl.style.color = 'var(--status-green)';
+                loadBar.className = 'load-bar-fill safe';
+                loadDisplay.classList.remove('danger');
+            }
+            
+            // Currency
+            document.getElementById('currency').textContent = gameState.currency;
+        }
+
+        function addEvent(type, text) {
+            const list = document.getElementById('events-list');
+            const time = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            const html = `
+                <div class="event-item ${type}">
+                    <div class="event-time">${time}</div>
+                    <div class="event-text">${text}</div>
+                </div>
+            `;
+            
+            list.insertAdjacentHTML('afterbegin', html);
+            
+            // Keep only last 20 events
+            while (list.children.length > 20) {
+                list.removeChild(list.lastChild);
+            }
+        }
+
+        // ============ PLAYER ACTIONS ============
+        function toggleGroup(districtId, groupId) {
+            const district = gameState.districts[districtId];
+            const group = district.groups.find(g => g.id === groupId);
+            
+            if (group.status === 'damaged') return;
+            
+            if (group.status === 'on') {
+                group.status = 'off';
+                gameState.consumption -= group.power;
+            } else {
+                group.status = 'on';
+                gameState.consumption += group.power;
+            }
+            
+            renderMap();
+        }
+
+        function enableAll() {
+            let count = 0;
+            Object.values(gameState.districts).forEach(district => {
+                district.groups.forEach(group => {
+                    if (group.status === 'off') {
+                        group.status = 'on';
+                        gameState.consumption += group.power;
+                        count++;
+                    }
+                });
+            });
+            if (count > 0) addEvent('info', `✓ Увімкнено ${count} груп`);
+            renderMap();
+        }
+
+        function emergencyOff() {
+            let count = 0;
+            const districts = Object.values(gameState.districts);
+            
+            for (const district of districts) {
+                for (const group of district.groups) {
+                    if (group.status === 'on' && count < 3) {
+                        group.status = 'off';
+                        gameState.consumption -= group.power;
+                        count++;
+                    }
+                }
+                if (count >= 3) break;
+            }
+            
+            if (count > 0) addEvent('warning', `⚠️ Аварійно вимкнено ${count} груп`);
+            renderMap();
+        }
+
+        function useReserve() {
+            if (!gameState.upgrades.generation.bought) {
+                addEvent('info', 'Спочатку купіть апгрейд генерації!');
+                return;
+            }
+            
+            const btn = document.getElementById('reserve-btn');
+            if (btn.disabled) return;
+            
+            btn.disabled = true;
+            gameState.generation += 300;
+            addEvent('success', '🔋 Резерв +300MW на 15 сек!');
+            
+            setTimeout(() => {
+                gameState.generation -= 300;
+                btn.disabled = false;
+                addEvent('info', '🔋 Резерв вичерпано');
+            }, 15000);
+        }
+
+        function buyUpgrade(id) {
+            const upg = gameState.upgrades[id];
+            if (gameState.currency >= upg.cost && !upg.bought) {
+                gameState.currency -= upg.cost;
+                upg.bought = true;
+                
+                if (id === 'generation') {
+                    gameState.generation += 250;
+                }
+                
+                addEvent('success', `🔧 Куплено: ${upg.name}`);
+                renderUpgrades();
+            }
+        }
+
+        function togglePause() {
+            gameState.paused = !gameState.paused;
+            document.getElementById('pause-btn').textContent = gameState.paused ? '▶️ СТАРТ' : '⏸️ ПАУЗА';
+            addEvent('info', gameState.paused ? 'Гра на паузі' : 'Гра продовжена');
+        }
+
+        // ============ GAME END ============
+        function gameOver() {
+            gameState.gameOver = true;
+            document.getElementById('overlay-title').textContent = '⚫ БЛЕКАУТ';
+            document.getElementById('overlay-title').className = 'overlay-title defeat';
+            document.getElementById('overlay-stats').innerHTML = `
+                Пережито хвиль: ${gameState.wavesCompleted}<br>
+                Максимальне навантаження: ${gameState.maxLoad}%<br>
+                Зароблено: ${gameState.currency}💰
+            `;
+            document.getElementById('game-overlay').classList.add('active');
+            document.getElementById('overload-banner').classList.remove('active');
+        }
+
+        function victory() {
+            gameState.gameOver = true;
+            document.getElementById('overlay-title').textContent = '🏆 ПЕРЕМОГА!';
+            document.getElementById('overlay-title').className = 'overlay-title victory';
+            document.getElementById('overlay-stats').innerHTML = `
+                Ви пережили всі 15 хвиль!<br>
+                Максимальне навантаження: ${gameState.maxLoad}%<br>
+                Зароблено: ${gameState.currency}💰
+            `;
+            document.getElementById('game-overlay').classList.add('active');
+        }
+
+        // Start game
+        init();
+    </script>
+</body>
+</html>
