@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ДТЕК Simulator v6</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #0f1318;
+            --bg-panel: #161b22;
+            --bg-card: #1c2128;
+            --border: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --accent-cyan: #39c5cf;
+            --neon-green: #00ff88;
+            --status-green: #3fb950;
+            --status-yellow: #d29922;
+            --status-orange: #db6d28;
+            --status-red: #f85149;
+            --status-purple: #a371f7;
+            --status-blue: #58a6ff;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+            font-size: 20px;
+        }
+
+        /* HEADER */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 4px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 0.9rem;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--neon-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header-stats { display: flex; gap: 8px; align-items: center; }
+        .stat-pill {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 3px 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 1rem;
+        }
+        .stat-pill.danger { border-color: var(--status-red); animation: glow 1s infinite; }
+        @keyframes glow {
+            0%,100% { box-shadow: 0 0 5px rgba(248,81,73,0.3); }
+            50% { box-shadow: 0 0 12px rgba(248,81,73,0.5); }
+        }
+        .stat-label { color: var(--text-muted); font-size: 0.55rem; }
+        .stat-value { font-weight: 700; }
+        .green { color: var(--status-green); }
+        .yellow { color: var(--status-yellow); }
+        .red { color: var(--status-red); }
+        .cyan { color: var(--accent-cyan); }
+        .gold { color: #ffd700; }
+        .mini-bar { width: 50px; height: 4px; background: var(--bg-primary); border-radius: 2px; overflow: hidden; }
+        .mini-bar-fill { height: 100%; transition: all 0.3s; }
+        .btn-sm {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.6rem;
+        }
+        .btn-sm:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+
+        /* MAIN LAYOUT */
+        .main-layout {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 6px;
+            overflow: hidden;
+        }
+
+        /* TOP SECTION */
+        .top-section {
+            display: flex;
+            gap: 6px;
+            height: 70%;
+            min-height: 180px;
+        }
+
+        /* PANELS */
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel-header {
+            background: var(--bg-panel);
+            padding: 5px 8px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        /* LEFT PANEL - Social Mood */
+        .left-panel { width: 300px; flex-shrink: 0; }
+        
+        .mood-section { margin-bottom: 8px; }
+        .mood-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .mood-bar-container {
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 2px;
+        }
+        .mood-bar {
+            height: 100%;
+            transition: all 0.5s;
+            border-radius: 3px;
+        }
+        .mood-bar.happy { background: var(--status-green); }
+        .mood-bar.neutral { background: var(--status-yellow); }
+        .mood-bar.angry { background: var(--status-orange); }
+        .mood-bar.furious { background: var(--status-red); }
+        
+        .mood-value {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .outage-list {
+            margin-top: 6px;
+            border-top: 1px solid var(--border);
+            padding-top: 6px;
+        }
+        .outage-title {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .outage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2px 4px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            font-size: 0.5rem;
+        }
+        .outage-item.warn { background: rgba(210,153,34,0.15); color: var(--status-yellow); }
+        .outage-item.danger { background: rgba(248,81,73,0.15); color: var(--status-red); }
+        .outage-item.ok { background: rgba(63,185,80,0.1); color: var(--status-green); }
+
+        /* MAP SECTION */
+        .map-section { flex: 1; position: relative; }
+        .map-header {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            background: rgba(15,19,24,0.9);
+            padding: 4px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.55rem;
+        }
+        .threats-display { display: flex; gap: 10px; }
+        .threat-counter { display: flex; align-items: center; gap: 3px; }
+        .threat-counter.shahed { color: var(--status-orange); }
+        .threat-counter.rocket { color: var(--status-red); }
+        .threat-counter.ballistic { color: var(--status-purple); }
+        .kyiv-map { width: 100%; height: 100%; }
+        .district-shape {
+            fill: rgba(63,185,80,0.1);
+            stroke: var(--status-green);
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .district-shape:hover { fill: rgba(63,185,80,0.2); stroke-width: 2; }
+        .district-shape.warning { fill: rgba(210,153,34,0.12); stroke: var(--status-yellow); }
+        .district-shape.danger { fill: rgba(248,81,73,0.15); stroke: var(--status-red); }
+        .district-label { font-size: 7px; fill: var(--text-secondary); pointer-events: none; text-anchor: middle; }
+        .district-power { font-size: 6px; fill: var(--accent-cyan); pointer-events: none; text-anchor: middle; }
+        .attack-path { stroke-width: 2; stroke-dasharray: 4,2; fill: none; opacity: 0.7; }
+        .attack-path.shahed { stroke: var(--status-orange); }
+        .attack-path.rocket { stroke: var(--status-red); }
+
+        /* RIGHT PANEL - Wave + Upgrades */
+        .right-panel { width: 300px; flex-shrink: 0; }
+        .wave-display { padding: 8px; text-align: center; border-bottom: 1px solid var(--border); }
+        .wave-number { font-size: 1.4rem; font-weight: 700; color: var(--accent-cyan); }
+        .wave-number.danger { color: var(--status-red); }
+        .wave-timer { font-size: 0.8rem; color: var(--text-secondary); }
+        .wave-phase { font-size: 0.55rem; margin-top: 3px; padding: 2px 8px; border-radius: 8px; display: inline-block; }
+        .wave-phase.prep { background: rgba(63,185,80,0.2); color: var(--status-green); }
+        .wave-phase.attack { background: rgba(248,81,73,0.2); color: var(--status-red); }
+        
+        .threat-slots { padding: 5px; max-height: 60px; overflow-y: auto; border-bottom: 1px solid var(--border); }
+        .threat-slot {
+            background: var(--bg-card);
+            border-radius: 3px;
+            padding: 3px 6px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.5rem;
+        }
+        .threat-icon { font-size: 12px; }
+        .threat-name { color: var(--text-primary); }
+        .threat-target { color: var(--text-muted); }
+
+        .upgrades-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .upgrade-tab {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.55rem;
+            border-bottom: 2px solid transparent;
+        }
+        .upgrade-tab:hover { color: var(--text-secondary); }
+        .upgrade-tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); }
+        
+        .upgrades-list { padding: 5px; }
+        .upgrade-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 5px 6px;
+            margin-bottom: 3px;
+            cursor: pointer;
+            font-size: 0.55rem;
+        }
+        .upgrade-item:hover:not(.bought):not(.locked) { border-color: var(--accent-cyan); }
+        .upgrade-item.bought { border-color: var(--status-green); opacity: 0.6; }
+        .upgrade-item.locked { opacity: 0.4; cursor: not-allowed; }
+        .upgrade-header { display: flex; justify-content: space-between; }
+        .upgrade-name { font-weight: 600; }
+        .upgrade-cost { color: #ffd700; }
+        .upgrade-desc { font-size: 0.5rem; color: var(--text-muted); margin-top: 2px; }
+
+        /* BOTTOM SECTION */
+        .bottom-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .controls-header {
+            background: var(--bg-panel);
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.6rem;
+            flex-shrink: 0;
+        }
+        .controls-header-left { display: flex; align-items: center; gap: 12px; }
+        .controls-header-actions { display: flex; gap: 6px; }
+        .action-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.55rem;
+        }
+        .action-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .action-btn.success:hover { border-color: var(--status-green); color: var(--status-green); }
+        .action-btn.danger:hover { border-color: var(--status-red); color: var(--status-red); }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .legend { display: flex; gap: 10px; font-size: 0.5rem; color: var(--text-muted); }
+        .legend-item { display: flex; align-items: center; gap: 3px; }
+        .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+        .legend-dot.on { background: var(--status-green); }
+        .legend-dot.off { background: var(--status-yellow); }
+        .legend-dot.hot { background: var(--status-orange); }
+        .legend-dot.dmg { background: var(--status-red); }
+
+        /* SUBGROUPS GRID */
+        .subgroups-container { flex: 1; overflow-y: auto; padding: 6px; }
+        .subgroups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+            gap: 4px;
+        }
+        .subgroup-btn {
+            background: rgba(63,185,80,0.12);
+            border: 1px solid var(--status-green);
+            border-radius: 4px;
+            padding: 4px 2px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--status-green);
+            transition: all 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            min-height: 38px;
+        }
+        .subgroup-btn:hover:not(.damaged) { transform: scale(1.03); box-shadow: 0 0 8px rgba(63,185,80,0.3); }
+        .subgroup-btn.off { background: rgba(210,153,34,0.12); border-color: var(--status-yellow); color: var(--status-yellow); }
+        .subgroup-btn.damaged { background: rgba(248,81,73,0.15); border-color: var(--status-red); color: var(--status-red); cursor: not-allowed; }
+        .subgroup-btn.overheated { background: rgba(219,109,40,0.15); border-color: var(--status-orange); color: var(--status-orange); }
+        .subgroup-btn.angry { border-color: var(--status-red); box-shadow: 0 0 6px rgba(248,81,73,0.4); }
+        
+        .subgroup-id { font-size: 0.65rem; }
+        .subgroup-power { font-size: 0.5rem; opacity: 0.8; }
+        .subgroup-status {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 8px;
+        }
+        .fatigue-bar {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--bg-primary);
+            border-radius: 0 0 3px 3px;
+        }
+        .fatigue-fill { height: 100%; transition: width 0.3s, background 0.3s; }
+        .fatigue-fill.ok { background: var(--status-green); }
+        .fatigue-fill.warn { background: var(--status-yellow); }
+        .fatigue-fill.danger { background: var(--status-orange); }
+        .fatigue-fill.critical { background: var(--status-red); }
+
+        /* EVENTS PANEL (mini, inside left) */
+        .events-mini { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 6px; }
+        .event-item {
+            background: var(--bg-card);
+            padding: 3px 5px;
+            border-radius: 3px;
+            border-left: 2px solid var(--border);
+            margin-bottom: 2px;
+            font-size: 0.5rem;
+        }
+        .event-item.alert { border-left-color: var(--status-red); }
+        .event-item.warning { border-left-color: var(--status-yellow); }
+        .event-item.success { border-left-color: var(--status-green); }
+        .event-item.info { border-left-color: var(--accent-cyan); }
+        .event-time { color: var(--text-muted); }
+        .event-text { color: var(--text-secondary); }
+
+        /* TOOLTIP */
+        .tooltip {
+            position: fixed;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px;
+            z-index: 100;
+            pointer-events: none;
+            display: none;
+            max-width: 200px;
+            font-size: 0.55rem;
+        }
+        .tooltip.active { display: block; }
+        .tooltip-title { font-weight: 700; color: var(--accent-cyan); margin-bottom: 4px; }
+        .tooltip-row { display: flex; justify-content: space-between; margin: 2px 0; }
+        .tooltip-label { color: var(--text-muted); }
+        .tooltip-value { color: var(--text-primary); }
+
+        /* OVERLAYS */
+        .overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 200;
+        }
+        .overlay.active { display: flex; }
+        .overlay-title { font-size: 2rem; font-weight: 700; margin-bottom: 12px; }
+        .overlay-title.defeat { color: var(--status-red); }
+        .overlay-title.victory { color: var(--neon-green); }
+        .overlay-stats { color: var(--text-secondary); text-align: center; margin-bottom: 20px; line-height: 1.6; }
+        .overlay-btn {
+            background: var(--accent-cyan);
+            border: none;
+            color: var(--bg-primary);
+            padding: 10px 30px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .overload-banner {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            background: rgba(248,81,73,0.95);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            z-index: 150;
+            display: none;
+            text-align: center;
+        }
+        .overload-banner.active { display: block; animation: glow 0.5s infinite; }
+        .explosion {
+            position: absolute;
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,200,50,0.9), rgba(248,81,73,0.5) 50%, transparent 70%);
+            animation: explode 0.4s forwards;
+            pointer-events: none; z-index: 25;
+        }
+        @keyframes explode {
+            0% { transform: translate(-50%,-50%) scale(0); opacity: 1; }
+            100% { transform: translate(-50%,-50%) scale(2.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">ДТЕК SIMULATOR</div>
+        <div class="header-stats">
+            <div class="stat-pill">
+                <span class="stat-label">ДЕНЬ</span>
+                <span class="stat-value cyan" id="day-num">1</span>
+            </div>
+            <div class="stat-pill" id="load-pill">
+                <span class="stat-label">МЕРЕЖА</span>
+                <span class="stat-value green" id="load-value">68%</span>
+                <div class="mini-bar"><div class="mini-bar-fill green" id="load-bar" style="width:68%"></div></div>
+            </div>
+            <div class="stat-pill">
+                <span class="stat-label">GEN</span>
+                <span class="stat-value cyan" id="gen-value">1200</span>
+            </div>
+            <div class="stat-pill">
+                <span class="stat-value gold">₴<span id="money-value">500</span></span>
+            </div>
+            <div class="stat-pill">
+                <span class="stat-value gold" id="reputation">★★★☆☆</span>
+            </div>
+            <button class="btn-sm" onclick="togglePause()" id="pause-btn">⏸</button>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <div class="top-section">
+            <!-- LEFT: Social Mood + Events -->
+            <div class="panel left-panel">
+                <div class="panel-header">📊 НАСТРОЇ</div>
+                <div class="panel-content">
+                    <div class="mood-section">
+                        <div class="mood-title">👥 Мешканці</div>
+                        <div class="mood-bar-container">
+                            <div class="mood-bar happy" id="mood-residents" style="width:80%"></div>
+                        </div>
+                        <div class="mood-value">
+                            <span id="mood-residents-text">😊 Задоволені</span>
+                            <span id="mood-residents-val">80%</span>
+                        </div>
+                    </div>
+                    <div class="mood-section">
+                        <div class="mood-title">🏢 Бізнес</div>
+                        <div class="mood-bar-container">
+                            <div class="mood-bar happy" id="mood-business" style="width:75%"></div>
+                        </div>
+                        <div class="mood-value">
+                            <span id="mood-business-text">😊 Задоволені</span>
+                            <span id="mood-business-val">75%</span>
+                        </div>
+                    </div>
+                    <div class="mood-section">
+                        <div class="mood-title">🏥 Критична інфра</div>
+                        <div class="mood-bar-container">
+                            <div class="mood-bar happy" id="mood-critical" style="width:95%"></div>
+                        </div>
+                        <div class="mood-value">
+                            <span id="mood-critical-text">✓ Стабільно</span>
+                            <span id="mood-critical-val">95%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="outage-list">
+                        <div class="outage-title">⏱ Довгі відключення:</div>
+                        <div id="outage-list"></div>
+                    </div>
+                    
+                    <div class="events-mini">
+                        <div class="outage-title">📋 Останні події:</div>
+                        <div id="events-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTER: Map -->
+            <div class="panel map-section" id="map-section">
+                <div class="map-header">
+                    <span>🗺️ КИЇВ</span>
+                    <div class="threats-display">
+                        <span class="threat-counter shahed">🛩️<span id="cnt-shahed">0</span></span>
+                        <span class="threat-counter rocket">🚀<span id="cnt-rocket">0</span></span>
+                        <span class="threat-counter ballistic">☄️<span id="cnt-ball">0</span></span>
+                    </div>
+                </div>
+                <svg class="kyiv-map" viewBox="0 0 500 180" id="kyiv-svg">
+                    <path d="M300,0 Q320,60 310,90 Q300,130 320,180" stroke="var(--accent-cyan)" stroke-width="8" fill="none" opacity="0.1"/>
+                    <g id="districts-layer"></g>
+                    <g id="attacks-layer"></g>
+                </svg>
+            </div>
+
+            <!-- RIGHT: Wave + Upgrades -->
+            <div class="panel right-panel">
+                <div class="panel-header">🎯 ХВИЛЯ</div>
+                <div class="wave-display">
+                    <div class="wave-number" id="wave-num">1</div>
+                    <div class="wave-timer" id="wave-timer">0:45</div>
+                    <div class="wave-phase prep" id="wave-phase">ПІДГОТОВКА</div>
+                </div>
+                <div class="threat-slots" id="threat-slots"></div>
+                <div class="upgrades-tabs">
+                    <button class="upgrade-tab active" data-tab="infra" onclick="showTab('infra')">🏗️Інфра</button>
+                    <button class="upgrade-tab" data-tab="defense" onclick="showTab('defense')">🛡️Захист</button>
+                </div>
+                <div class="panel-content upgrades-list" id="upgrades-list"></div>
+            </div>
+        </div>
+
+        <!-- BOTTOM: Subgroups -->
+        <div class="bottom-section">
+            <div class="controls-header">
+                <div class="controls-header-left">
+                    <span>⚡ ПІДГРУПИ</span>
+                    <span style="color:var(--accent-cyan)" id="total-power">0 MW</span>
+                    <div class="legend">
+                        <div class="legend-item"><div class="legend-dot on"></div>ON</div>
+                        <div class="legend-item"><div class="legend-dot off"></div>OFF</div>
+                        <div class="legend-item"><div class="legend-dot hot"></div>HOT</div>
+                        <div class="legend-item"><div class="legend-dot dmg"></div>DMG</div>
+                    </div>
+                </div>
+                <div class="controls-header-actions">
+                    <button class="action-btn success" onclick="enableAll()">✓ Все ON</button>
+                    <button class="action-btn" onclick="useReserve()" id="reserve-btn" disabled>🔋+300</button>
+                    <button class="action-btn danger" onclick="emergencyOff()">⚠-5</button>
+                    <button class="action-btn" onclick="rotateGroups()">🔄 Ротація</button>
+                </div>
+            </div>
+            <div class="subgroups-container">
+                <div class="subgroups-grid" id="subgroups-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+    <div class="overlay" id="game-overlay">
+        <div class="overlay-title" id="overlay-title">БЛЕКАУТ</div>
+        <div class="overlay-stats" id="overlay-stats"></div>
+        <button class="overlay-btn" onclick="location.reload()">🔄 Знову</button>
+    </div>
+    <div class="overload-banner" id="overload-banner">⚠️ ПЕРЕВАНТАЖЕННЯ!</div>
+
+<script>
+// ========== DATA ==========
+const THREATS = [
+    { id:'shahed136', name:'Шахед-136', icon:'🛩️', type:'shahed', speed:0.015, dmg:1, wave:1 },
+    { id:'geran2', name:'Геран-2', icon:'🛩️', type:'shahed', speed:0.02, dmg:1, wave:2 },
+    { id:'swarm', name:'Рій дронів', icon:'🦟', type:'shahed', speed:0.012, dmg:2, wave:4 },
+    { id:'kalibr', name:'Калібр', icon:'🚀', type:'rocket', speed:0.045, dmg:2, wave:3 },
+    { id:'x101', name:'Х-101', icon:'🚀', type:'rocket', speed:0.05, dmg:2, wave:5 },
+    { id:'iskander', name:'Іскандер', icon:'☄️', type:'ballistic', speed:0.08, dmg:3, wave:7 },
+    { id:'kinzhal', name:'Кинджал', icon:'⚡', type:'ballistic', speed:0.12, dmg:4, wave:9 }
+];
+
+const UPGRADES = {
+    infra: [
+        { id:'gen1', name:'⚡ +100 MW', desc:'Модернізація ТЕЦ', cost:80, effect:()=>G.generation+=100 },
+        { id:'gen2', name:'🔋 Резерв', desc:'Кнопка +300MW', cost:120, effect:()=>G.hasReserve=true },
+        { id:'gen3', name:'🚛 +150 MW', desc:'Мобільні дизелі', cost:200, effect:()=>G.generation+=150 },
+        { id:'auto', name:'🔄 Авто-баланс', desc:'Авто при 92%', cost:250, effect:()=>G.hasAuto=true },
+        { id:'cool', name:'❄️ Охолодження', desc:'-40% перегріву', cost:180, effect:()=>G.coolBonus+=0.4 },
+        { id:'gen4', name:'🏭 +300 MW', desc:'Супер-ТЕЦ', cost:400, effect:()=>G.generation+=300 }
+    ],
+    defense: [
+        { id:'reb', name:'📡 РЕБ', desc:'-25% шахедів', cost:120, effect:()=>G.shahedDef+=0.25 },
+        { id:'repair', name:'🔧 Ремонт 15с', desc:'Швидкі бригади', cost:150, effect:()=>G.repairTime=15 },
+        { id:'ppo', name:'🚀 ППО', desc:'-25% ракет', cost:250, effect:()=>G.rocketDef+=0.25 },
+        { id:'cable', name:'🔌 Кабелі', desc:'-30% пошкоджень', cost:300, effect:()=>G.dmgReduction+=0.3 },
+        { id:'air', name:'✈️ Щит', desc:'-20% всіх', cost:450, effect:()=>G.globalDef+=0.2 }
+    ]
+};
+
+const DISTRICTS = [
+    { id:'obolon', name:'Оболонь', short:'ОБЛ', power:140, x:130, y:32, subs:4 },
+    { id:'podil', name:'Поділ', short:'ПДЛ', power:100, x:200, y:45, subs:3 },
+    { id:'shevchenko', name:'Шевченко', short:'ШВЧ', power:130, x:120, y:80, subs:4 },
+    { id:'pechersk', name:'Печерськ', short:'ПЧР', power:150, x:235, y:90, subs:4 },
+    { id:'sviatoshyn', name:'Святошин', short:'СВТ', power:110, x:45, y:72, subs:3 },
+    { id:'solomianka', name:"Солом'янка", short:'СЛМ', power:95, x:85, y:130, subs:3 },
+    { id:'holosiiv', name:'Голосіїв', short:'ГЛС', power:105, x:175, y:145, subs:3 },
+    { id:'desnianskyi', name:'Деснянський', short:'ДСН', power:135, x:370, y:35, subs:4 },
+    { id:'dnipro', name:'Дніпровський', short:'ДНП', power:115, x:395, y:95, subs:3 },
+    { id:'darnytsia', name:'Дарниця', short:'ДРН', power:125, x:440, y:140, subs:4 }
+];
+
+// ========== STATE ==========
+const G = {
+    paused: false,
+    gameOver: false,
+    day: 1,
+    generation: 1200,
+    consumption: 780,
+    load: 65,
+    maxLoad: 65,
+    money: 500,
+    
+    mood: { residents: 80, business: 75, critical: 95 },
+    
+    repairTime: 35,
+    hasReserve: false,
+    hasAuto: false,
+    coolBonus: 0,
+    shahedDef: 0,
+    rocketDef: 0,
+    globalDef: 0,
+    dmgReduction: 0,
+    
+    wave: { num:1, phase:'prep', time:45, threats:[] },
+    subgroups: [],
+    boughtUpgrades: new Set(),
+    currentTab: 'infra'
+};
+
+// Init subgroups
+let subId = 1;
+DISTRICTS.forEach(d => {
+    for(let i = 1; i <= d.subs; i++){
+        G.subgroups.push({
+            id: subId++,
+            districtId: d.id,
+            districtName: d.name,
+            districtShort: d.short,
+            num: i,
+            power: Math.round(d.power / d.subs),
+            status: 'on',
+            onTime: 0,
+            offTime: 0,
+            heat: 0
+        });
+    }
+});
+
+// ========== RENDER ==========
+function renderMap(){
+    const layer = document.getElementById('districts-layer');
+    layer.innerHTML = '';
+    DISTRICTS.forEach(d => {
+        const subs = G.subgroups.filter(s => s.districtId === d.id);
+        const hasDmg = subs.some(s => s.status === 'damaged');
+        const hasOff = subs.some(s => s.status === 'off');
+        const curPower = subs.filter(s => s.status === 'on').reduce((a,s) => a + s.power, 0);
+        
+        let cls = 'district-shape';
+        if(hasDmg) cls += ' danger';
+        else if(hasOff) cls += ' warning';
+        
+        const size = 22 + d.power/15;
+        const path = `M${d.x},${d.y-size/2} L${d.x+size/2},${d.y} L${d.x},${d.y+size/2} L${d.x-size/2},${d.y} Z`;
+        
+        const shape = document.createElementNS('http://www.w3.org/2000/svg','path');
+        shape.setAttribute('d', path);
+        shape.setAttribute('class', cls);
+        shape.id = 'map-'+d.id;
+        layer.appendChild(shape);
+        
+        const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+        label.setAttribute('x', d.x);
+        label.setAttribute('y', d.y - 1);
+        label.setAttribute('class', 'district-label');
+        label.textContent = d.short;
+        layer.appendChild(label);
+        
+        const power = document.createElementNS('http://www.w3.org/2000/svg','text');
+        power.setAttribute('x', d.x);
+        power.setAttribute('y', d.y + 8);
+        power.setAttribute('class', 'district-power');
+        power.textContent = curPower;
+        power.id = 'power-'+d.id;
+        layer.appendChild(power);
+    });
+}
+
+function renderSubgroups(){
+    const grid = document.getElementById('subgroups-grid');
+    let total = 0;
+    
+    grid.innerHTML = G.subgroups.map(s => {
+        if(s.status === 'on') total += s.power;
+        
+        let cls = 'subgroup-btn ' + s.status;
+        let statusIcon = '';
+        
+        if(s.status === 'on' && s.heat >= 70) {
+            cls = 'subgroup-btn overheated';
+            statusIcon = '🔥';
+        }
+        if(s.status === 'off' && s.offTime > 90) {
+            cls += ' angry';
+            statusIcon = '😡';
+        } else if(s.status === 'off' && s.offTime > 45) {
+            statusIcon = '😐';
+        }
+        
+        const heatPct = Math.min(100, s.heat);
+        let heatCls = heatPct >= 70 ? 'critical' : heatPct >= 50 ? 'danger' : heatPct >= 30 ? 'warn' : 'ok';
+        
+        return `
+            <button class="${cls}" 
+                    onclick="toggleSubgroup(${s.id})" 
+                    onmouseenter="showTip(event,${s.id})"
+                    onmouseleave="hideTip()"
+                    ${s.status === 'damaged' ? 'disabled' : ''}>
+                <span class="subgroup-status">${statusIcon}</span>
+                <span class="subgroup-id">${s.districtShort}-${s.num}</span>
+                <span class="subgroup-power">${s.power}MW</span>
+                <div class="fatigue-bar"><div class="fatigue-fill ${heatCls}" style="width:${heatPct}%"></div></div>
+            </button>
+        `;
+    }).join('');
+    
+    document.getElementById('total-power').textContent = total + ' MW';
+}
+
+function renderOutages(){
+    const list = document.getElementById('outage-list');
+    const longOff = G.subgroups
+        .filter(s => s.status === 'off' && s.offTime > 30)
+        .sort((a,b) => b.offTime - a.offTime)
+        .slice(0, 5);
+    
+    if(longOff.length === 0){
+        list.innerHTML = '<div class="outage-item ok">✓ Немає довгих відключень</div>';
+        return;
+    }
+    
+    list.innerHTML = longOff.map(s => {
+        const min = Math.floor(s.offTime / 60);
+        const sec = s.offTime % 60;
+        const cls = s.offTime > 90 ? 'danger' : 'warn';
+        const emoji = s.offTime > 90 ? '😡' : '😐';
+        return `<div class="outage-item ${cls}">
+            <span>${s.districtShort}-${s.num}</span>
+            <span>${emoji} ${min}:${String(sec).padStart(2,'0')}</span>
+        </div>`;
+    }).join('');
+}
+
+function renderMood(){
+    // Calculate mood based on outages
+    const offGroups = G.subgroups.filter(s => s.status === 'off');
+    const longOff = offGroups.filter(s => s.offTime > 60).length;
+    const veryLongOff = offGroups.filter(s => s.offTime > 120).length;
+    const damaged = G.subgroups.filter(s => s.status === 'damaged').length;
+    
+    // Residents mood
+    G.mood.residents = Math.max(10, 100 - longOff * 8 - veryLongOff * 15 - damaged * 5);
+    // Business mood
+    G.mood.business = Math.max(10, 100 - offGroups.length * 3 - damaged * 8);
+    // Critical - only affected by damage
+    G.mood.critical = Math.max(20, 100 - damaged * 12);
+    
+    ['residents', 'business', 'critical'].forEach(type => {
+        const val = G.mood[type];
+        const bar = document.getElementById('mood-' + type);
+        const text = document.getElementById('mood-' + type + '-text');
+        const valEl = document.getElementById('mood-' + type + '-val');
+        
+        bar.style.width = val + '%';
+        valEl.textContent = Math.round(val) + '%';
+        
+        let cls, emoji;
+        if(val >= 70) { cls = 'happy'; emoji = '😊'; text.textContent = 'Задоволені'; }
+        else if(val >= 50) { cls = 'neutral'; emoji = '😐'; text.textContent = 'Нейтрально'; }
+        else if(val >= 30) { cls = 'angry'; emoji = '😠'; text.textContent = 'Незадоволені'; }
+        else { cls = 'furious'; emoji = '😡'; text.textContent = 'Протести!'; }
+        
+        bar.className = 'mood-bar ' + cls;
+        text.textContent = emoji + ' ' + text.textContent;
+    });
+    
+    // Game over if residents mood too low
+    if(G.mood.residents < 15) {
+        addEvent('alert', '😡 МАСОВІ ПРОТЕСТИ! Вас звільнено!');
+        setTimeout(gameOver, 500);
+    }
+}
+
+function renderThreats(){
+    const slots = document.getElementById('threat-slots');
+    if(G.wave.threats.length === 0){
+        slots.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:5px">—</div>';
+        return;
+    }
+    slots.innerHTML = G.wave.threats.slice(0,3).map(t => {
+        const dist = DISTRICTS.find(d => d.id === t.targetId);
+        return `<div class="threat-slot">
+            <span class="threat-icon">${t.icon}</span>
+            <span class="threat-name">${t.name}</span>
+            <span class="threat-target">→${dist?.short||'?'}</span>
+        </div>`;
+    }).join('');
+}
+
+function renderUpgrades(){
+    const list = document.getElementById('upgrades-list');
+    const ups = UPGRADES[G.currentTab] || [];
+    list.innerHTML = ups.map(u => {
+        const bought = G.boughtUpgrades.has(u.id);
+        const canBuy = G.money >= u.cost && !bought;
+        let cls = 'upgrade-item';
+        if(bought) cls += ' bought';
+        else if(!canBuy) cls += ' locked';
+        return `<div class="${cls}" onclick="buyUpgrade('${u.id}')">
+            <div class="upgrade-header">
+                <span class="upgrade-name">${u.name}</span>
+                <span class="upgrade-cost">${bought ? '✓' : u.cost}</span>
+            </div>
+            <div class="upgrade-desc">${u.desc}</div>
+        </div>`;
+    }).join('');
+}
+
+function showTab(tab){
+    G.currentTab = tab;
+    document.querySelectorAll('.upgrade-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    renderUpgrades();
+}
+
+function showTip(e, id){
+    const s = G.subgroups.find(x => x.id === id);
+    if(!s) return;
+    const tip = document.getElementById('tooltip');
+    const heatSt = s.heat >= 70 ? '🔥Критично!' : s.heat >= 40 ? '⚠️Високий' : '✓Норма';
+    const offSt = s.offTime > 90 ? '😡Скарги!' : s.offTime > 45 ? '😐Незадов.' : '✓Норма';
+    tip.innerHTML = `
+        <div class="tooltip-title">${s.districtName} - Група ${s.num}</div>
+        <div class="tooltip-row"><span class="tooltip-label">Потужність:</span><span>${s.power} MW</span></div>
+        <div class="tooltip-row"><span class="tooltip-label">Статус:</span><span>${s.status==='on'?'🟢ON':s.status==='off'?'🟡OFF':'🔴DMG'}</span></div>
+        <div class="tooltip-row"><span class="tooltip-label">Нагрів:</span><span>${Math.round(s.heat)}% ${heatSt}</span></div>
+        ${s.status==='off'?`<div class="tooltip-row"><span class="tooltip-label">Без світла:</span><span>${Math.floor(s.offTime/60)}:${String(s.offTime%60).padStart(2,'0')} ${offSt}</span></div>`:''}
+    `;
+    tip.style.left = (e.clientX + 10) + 'px';
+    tip.style.top = (e.clientY + 10) + 'px';
+    tip.classList.add('active');
+}
+function hideTip(){ document.getElementById('tooltip').classList.remove('active'); }
+
+function updateUI(){
+    G.load = Math.round((G.consumption / G.generation) * 100);
+    G.maxLoad = Math.max(G.maxLoad, G.load);
+    
+    const loadEl = document.getElementById('load-value');
+    const loadBar = document.getElementById('load-bar');
+    const loadPill = document.getElementById('load-pill');
+    
+    loadEl.textContent = G.load + '%';
+    loadBar.style.width = Math.min(100, G.load) + '%';
+    
+    const cls = G.load >= 88 ? 'red' : G.load >= 70 ? 'yellow' : 'green';
+    loadEl.className = 'stat-value ' + cls;
+    loadBar.className = 'mini-bar-fill ' + cls;
+    loadPill.classList.toggle('danger', G.load >= 88);
+    
+    document.getElementById('gen-value').textContent = G.generation;
+    document.getElementById('money-value').textContent = G.money;
+    document.getElementById('day-num').textContent = G.day;
+    
+    const rep = Math.round((G.mood.residents + G.mood.business + G.mood.critical) / 60);
+    const stars = '★'.repeat(Math.min(5,rep)) + '☆'.repeat(Math.max(0,5-rep));
+    document.getElementById('reputation').textContent = stars;
+    
+    const w = G.wave;
+    document.getElementById('wave-num').textContent = w.num;
+    document.getElementById('wave-num').classList.toggle('danger', w.phase === 'attack');
+    document.getElementById('wave-timer').textContent = `${Math.floor(w.time/60)}:${String(w.time%60).padStart(2,'0')}`;
+    const phase = document.getElementById('wave-phase');
+    phase.textContent = w.phase === 'prep' ? 'ПІДГОТОВКА' : 'АТАКА!';
+    phase.className = 'wave-phase ' + w.phase;
+    
+    document.getElementById('cnt-shahed').textContent = w.threats.filter(t=>t.type==='shahed').length;
+    document.getElementById('cnt-rocket').textContent = w.threats.filter(t=>t.type==='rocket').length;
+    document.getElementById('cnt-ball').textContent = w.threats.filter(t=>t.type==='ballistic').length;
+    
+    document.getElementById('reserve-btn').disabled = !G.hasReserve;
+    document.getElementById('overload-banner').classList.toggle('active', G.load >= 92);
+    
+    // Map update
+    DISTRICTS.forEach(d => {
+        const subs = G.subgroups.filter(s => s.districtId === d.id);
+        const el = document.getElementById('power-'+d.id);
+        if(el) el.textContent = subs.filter(s=>s.status==='on').reduce((a,s)=>a+s.power,0);
+        const shape = document.getElementById('map-'+d.id);
+        if(shape){
+            const hasDmg = subs.some(s=>s.status==='damaged');
+            const hasOff = subs.some(s=>s.status==='off');
+            shape.classList.remove('danger','warning');
+            if(hasDmg) shape.classList.add('danger');
+            else if(hasOff) shape.classList.add('warning');
+        }
+    });
+}
+
+function addEvent(type, text){
+    const list = document.getElementById('events-list');
+    const t = new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    list.insertAdjacentHTML('afterbegin',`<div class="event-item ${type}"><span class="event-time">${t}</span> <span class="event-text">${text}</span></div>`);
+    while(list.children.length > 8) list.removeChild(list.lastChild);
+}
+
+// ========== GAME LOGIC ==========
+function gameTick(){
+    if(G.paused || G.gameOver) return;
+    
+    G.subgroups.forEach(s => {
+        if(s.status === 'on'){
+            s.onTime++;
+            s.offTime = 0;
+            s.heat = Math.min(100, s.heat + 0.4 * (1 - G.coolBonus));
+            if(s.heat >= 100){
+                s.status = 'damaged';
+                G.consumption -= s.power;
+                addEvent('alert', `🔥 ${s.districtShort}-${s.num} ПЕРЕГОРІВ!`);
+                setTimeout(() => repairSub(s.id), G.repairTime * 1000);
+            }
+        } else if(s.status === 'off'){
+            s.offTime++;
+            s.onTime = 0;
+            s.heat = Math.max(0, s.heat - 1.2);
+        } else {
+            s.heat = Math.max(0, s.heat - 1.5);
+        }
+    });
+    
+    G.wave.time--;
+    if(G.wave.phase === 'prep'){
+        if(G.wave.time <= 0) startAttack();
+        else if(G.wave.time === 10) addEvent('warning', '⚠️ Атака через 10с!');
+    } else {
+        if(G.wave.time > 2 && Math.random() < 0.4) spawnThreat();
+        G.consumption += 6 + G.wave.num * 2;
+        if(G.wave.time <= 0 || (G.wave.threats.length === 0 && G.wave.time < 5)) endWave();
+    }
+    
+    updateThreats();
+    G.consumption += Math.floor(Math.random() * 12) - 5;
+    G.consumption = Math.max(400, G.consumption);
+    
+    if(G.hasAuto && G.load >= 92) autoBalance();
+    if(G.load >= 100) gameOver();
+    
+    renderSubgroups();
+    renderOutages();
+    renderMood();
+    renderThreats();
+    updateUI();
+}
+
+function startAttack(){
+    G.wave.phase = 'attack';
+    G.wave.time = 10 + G.wave.num * 2;
+    addEvent('alert', `🔥 ХВИЛЯ ${G.wave.num}!`);
+}
+
+function spawnThreat(){
+    const avail = THREATS.filter(t => t.wave <= G.wave.num);
+    const tmpl = avail[Math.floor(Math.random() * avail.length)];
+    
+    let blocked = false;
+    if(tmpl.type === 'shahed' && Math.random() < G.shahedDef + G.globalDef) blocked = true;
+    if(tmpl.type === 'rocket' && Math.random() < G.rocketDef + G.globalDef) blocked = true;
+    if(tmpl.type === 'ballistic' && Math.random() < G.globalDef) blocked = true;
+    if(blocked){ addEvent('success', `🛡️ ${tmpl.name} збито!`); return; }
+    
+    const targetId = DISTRICTS[Math.floor(Math.random() * DISTRICTS.length)].id;
+    const target = DISTRICTS.find(d => d.id === targetId);
+    const edges = [{x:-20,y:Math.random()*180},{x:520,y:Math.random()*180},{x:Math.random()*500,y:-20}];
+    const start = edges[Math.floor(Math.random()*edges.length)];
+    
+    G.wave.threats.push({ id:Date.now()+Math.random(), ...tmpl, targetId, x:start.x, y:start.y, tx:target.x, ty:target.y, progress:0 });
+}
+
+function updateThreats(){
+    const layer = document.getElementById('attacks-layer');
+    layer.innerHTML = '';
+    const toRemove = [];
+    G.wave.threats.forEach(t => {
+        t.progress += t.speed;
+        if(t.progress >= 1){
+            toRemove.push(t.id);
+            if(t.dmg > 0) hitDistrict(t);
+            showExplosion(t.tx, t.ty);
+        } else {
+            const cx = t.x + (t.tx - t.x) * t.progress;
+            const cy = t.y + (t.ty - t.y) * t.progress;
+            const path = document.createElementNS('http://www.w3.org/2000/svg','line');
+            path.setAttribute('x1',cx); path.setAttribute('y1',cy);
+            path.setAttribute('x2',t.tx); path.setAttribute('y2',t.ty);
+            path.setAttribute('class','attack-path '+t.type);
+            layer.appendChild(path);
+            const icon = document.createElementNS('http://www.w3.org/2000/svg','text');
+            icon.setAttribute('x',cx); icon.setAttribute('y',cy);
+            icon.setAttribute('font-size','14'); icon.setAttribute('text-anchor','middle');
+            icon.textContent = t.icon;
+            layer.appendChild(icon);
+        }
+    });
+    G.wave.threats = G.wave.threats.filter(t => !toRemove.includes(t.id));
+}
+
+function hitDistrict(threat){
+    const subs = G.subgroups.filter(s => s.districtId === threat.targetId && s.status !== 'damaged');
+    let dmg = Math.round(threat.dmg * (1 - G.dmgReduction));
+    if(dmg < 1) dmg = 1;
+    const toHit = subs.slice(0, Math.min(dmg, subs.length));
+    toHit.forEach(s => {
+        if(s.status === 'on') G.consumption -= s.power;
+        s.status = 'damaged';
+        setTimeout(() => repairSub(s.id), G.repairTime * 1000);
+    });
+    if(toHit.length > 0){
+        const dist = DISTRICTS.find(d => d.id === threat.targetId);
+        addEvent('alert', `💥 ${threat.name}→${dist.short} ${toHit.length}шкоди`);
+    }
+}
+
+function repairSub(id){
+    const s = G.subgroups.find(x => x.id === id);
+    if(s && s.status === 'damaged'){
+        s.status = 'on';
+        s.heat = 0;
+        G.consumption += s.power;
+        addEvent('success', `✓ ${s.districtShort}-${s.num} OK`);
+    }
+}
+
+function showExplosion(x, y){
+    const section = document.getElementById('map-section');
+    const svg = document.getElementById('kyiv-svg');
+    const rect = svg.getBoundingClientRect();
+    const exp = document.createElement('div');
+    exp.className = 'explosion';
+    exp.style.left = (x * rect.width / 500) + 'px';
+    exp.style.top = (y * rect.height / 180 + 24) + 'px';
+    section.appendChild(exp);
+    setTimeout(() => exp.remove(), 400);
+}
+
+function endWave(){
+    G.wave.threats = [];
+    document.getElementById('attacks-layer').innerHTML = '';
+    const reward = 50 + G.wave.num * 25;
+    G.money += reward;
+    addEvent('success', `✓ Хвиля ${G.wave.num}! +${reward}₴`);
+    G.consumption = Math.max(500, G.consumption - 80);
+    G.wave.num++;
+    G.wave.phase = 'prep';
+    G.wave.time = Math.max(25, 45 - G.wave.num * 2);
+    if(G.wave.num % 3 === 0) G.day++;
+    renderUpgrades();
+    if(G.wave.num > 12) victory();
+}
+
+function autoBalance(){
+    const hot = G.subgroups.filter(s=>s.status==='on').sort((a,b)=>b.heat-a.heat)[0];
+    if(hot){ hot.status='off'; G.consumption-=hot.power; addEvent('info',`⚖️ Авто: ${hot.districtShort}-${hot.num} OFF`); }
+}
+
+// ========== ACTIONS ==========
+function toggleSubgroup(id){
+    const s = G.subgroups.find(x => x.id === id);
+    if(!s || s.status === 'damaged') return;
+    if(s.status === 'on'){ s.status = 'off'; G.consumption -= s.power; }
+    else { s.status = 'on'; G.consumption += s.power; }
+    renderSubgroups();
+}
+
+function enableAll(){
+    let c = 0;
+    G.subgroups.forEach(s => { if(s.status==='off'){ s.status='on'; G.consumption+=s.power; c++; }});
+    if(c) addEvent('info', `✓ ON ${c} груп`);
+    renderSubgroups();
+}
+
+function emergencyOff(){
+    const hot = G.subgroups.filter(s=>s.status==='on').sort((a,b)=>b.heat-a.heat).slice(0,5);
+    hot.forEach(s => { s.status='off'; G.consumption-=s.power; });
+    if(hot.length) addEvent('warning', `⚠ OFF ${hot.length} гарячих`);
+    renderSubgroups();
+}
+
+function rotateGroups(){
+    const on = G.subgroups.filter(s=>s.status==='on').sort((a,b)=>b.heat-a.heat);
+    const off = G.subgroups.filter(s=>s.status==='off').sort((a,b)=>b.offTime-a.offTime);
+    const n = Math.min(4, on.length, off.length);
+    for(let i=0;i<n;i++){
+        if(on[i].heat>25||off[i].offTime>25){
+            on[i].status='off'; G.consumption-=on[i].power;
+            off[i].status='on'; G.consumption+=off[i].power;
+        }
+    }
+    addEvent('info', `🔄 Ротація ${n} груп`);
+    renderSubgroups();
+}
+
+function useReserve(){
+    if(!G.hasReserve) return;
+    const btn = document.getElementById('reserve-btn');
+    if(btn.disabled) return;
+    btn.disabled = true;
+    G.generation += 300;
+    addEvent('success', '🔋 +300MW 15с!');
+    setTimeout(() => { G.generation -= 300; btn.disabled = false; addEvent('info','🔋 Резерв вичерпано'); }, 15000);
+}
+
+function buyUpgrade(id){
+    const ups = [...UPGRADES.infra, ...UPGRADES.defense];
+    const u = ups.find(x => x.id === id);
+    if(!u || G.boughtUpgrades.has(id) || G.money < u.cost) return;
+    G.money -= u.cost;
+    G.boughtUpgrades.add(id);
+    u.effect();
+    addEvent('success', `🔧 ${u.name}`);
+    renderUpgrades();
+    updateUI();
+}
+
+function togglePause(){
+    G.paused = !G.paused;
+    document.getElementById('pause-btn').textContent = G.paused ? '▶' : '⏸';
+}
+
+function gameOver(){
+    G.gameOver = true;
+    document.getElementById('overlay-title').textContent = '⚫ БЛЕКАУТ';
+    document.getElementById('overlay-title').className = 'overlay-title defeat';
+    document.getElementById('overlay-stats').innerHTML = `Хвиль: ${G.wave.num-1}<br>Макс: ${G.maxLoad}%<br>₴${G.money}`;
+    document.getElementById('game-overlay').classList.add('active');
+    document.getElementById('overload-banner').classList.remove('active');
+}
+
+function victory(){
+    G.gameOver = true;
+    document.getElementById('overlay-title').textContent = '🏆 ПЕРЕМОГА!';
+    document.getElementById('overlay-title').className = 'overlay-title victory';
+    document.getElementById('overlay-stats').innerHTML = `12 хвиль!<br>День ${G.day}<br>₴${G.money}`;
+    document.getElementById('game-overlay').classList.add('active');
+}
+
+// ========== INIT ==========
+renderMap();
+renderSubgroups();
+renderUpgrades();
+renderOutages();
+renderMood();
+updateUI();
+addEvent('info', '🟢 Старт! Балансуйте групи!');
+setInterval(gameTick, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+export const THREATS = [
+  { id: 'shahed136', name: 'Шахед-136', icon: '\u{1F6E9}\uFE0F', type: 'shahed', speed: 0.015, dmg: 1, wave: 1 },
+  { id: 'shahed131', name: 'Шахед-131', icon: '\u{1F6E9}\uFE0F', type: 'shahed', speed: 0.018, dmg: 1, wave: 2 },
+  { id: 'geran2', name: 'Герань-2', icon: '\u{1F6E9}\uFE0F', type: 'shahed', speed: 0.02, dmg: 1, wave: 2 },
+  { id: 'decoy', name: 'Декой-Шахед', icon: '\u{1F6E9}\uFE0F', type: 'shahed', speed: 0.025, dmg: 1, wave: 3 },
+  { id: 'swarm', name: 'Рій дронів', icon: '\u{1F99F}', type: 'shahed', speed: 0.012, dmg: 2, wave: 4 },
+  { id: 'kalibr', name: 'Калібр', icon: '\u{1F680}', type: 'rocket', speed: 0.04, dmg: 2, wave: 3 },
+  { id: 'x101', name: 'Х-101', icon: '\u{1F680}', type: 'rocket', speed: 0.045, dmg: 2, wave: 5 },
+  { id: 'cruise_swarm', name: 'Крилата + рій', icon: '\u{1F680}', type: 'rocket', speed: 0.03, dmg: 3, wave: 6 },
+  { id: 'iskander', name: 'Іскандер-М', icon: '\u2604\uFE0F', type: 'ballistic', speed: 0.07, dmg: 3, wave: 7 },
+  { id: 'kn23', name: 'КН-23', icon: '\u2604\uFE0F', type: 'ballistic', speed: 0.08, dmg: 3, wave: 8 },
+  { id: 'kinzhal', name: 'Кинджал', icon: '\u26A1', type: 'ballistic', speed: 0.1, dmg: 4, wave: 9 },
+  { id: 'zircon', name: 'Циркон', icon: '\u26A1', type: 'ballistic', speed: 0.12, dmg: 4, wave: 10 },
+  { id: 'cluster', name: 'Балістика+кластер', icon: '\u2604\uFE0F', type: 'ballistic', speed: 0.07, dmg: 5, wave: 11 },
+  { id: 'cyber_shahed', name: 'Кібер-Шахед', icon: '\u{1F4BB}', type: 'cyber', speed: 0.025, dmg: 2, wave: 10 },
+  { id: 'oreshnik', name: 'Орешнік', icon: '\u{1F4A5}', type: 'boss', speed: 0.06, dmg: 6, wave: 12 },
+]
