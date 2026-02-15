@@ -49,31 +49,6 @@
         font-size: calc(13px * var(--ui-scale));
       }
 
-      .leaflet-container,
-      #real-map,
-      .leaflet-pane {
-        z-index: 1 !important;
-      }
-
-      #game-overlay,
-      #settings-modal,
-      .overlay,
-      .modal {
-        z-index: 10000 !important;
-        position: fixed !important;
-        inset: 0 !important;
-      }
-
-      .threat-tooltip {
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 1.1rem;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-      }
-
       /* HEADER */
       .header {
         background: var(--bg-secondary);
@@ -183,7 +158,7 @@
       .top-section {
         display: flex;
         gap: 6px;
-        height: 70%;
+        height: 38%;
         min-height: 180px;
       }
       .panel {
@@ -534,8 +509,7 @@
       /* BOTTOM */
       .bottom-section {
         flex-shrink: 0;
-        height: 30%;
-        /* height: 300px; */
+        height: 300px; /* фіксована висота, можна зробити 120px або 160px */
         background: var(--bg-secondary);
         border-top: 2px solid var(--border);
         display: flex;
@@ -627,55 +601,62 @@
       /* Контейнер для всіх кнопок груп */
       .subgroups-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); /* автоматичний перенос */
-        gap: 7px 8px;
-        padding: 10px 12px;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 6px 8px;
+        padding: 8px 12px;
         overflow-y: auto;
-        max-height: 148px; /* фіксована висота панелі */
+        max-height: 180px; /* або скільки тобі зручно */
         background: var(--bg-panel);
         border-top: 1px solid var(--border);
       }
 
-      /* Кнопка групи */
+      /* Основний стиль кнопки */
       .subgroup-btn {
-        padding: 7px 6px;
-        min-height: 62px;
-        border: 1.5px solid var(--border);
-        border-radius: 7px;
-        background: var(--bg-card);
-        color: var(--text-primary);
-        font-size: 0.71rem;
-        font-weight: 600;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.15s ease;
+        position: relative;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        gap: 3px;
-        position: relative;
+        padding: 8px 6px;
+        min-height: 54px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 0.72rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.13s ease;
+        user-select: none;
+        overflow: hidden;
+        text-align: center;
+        line-height: 1.25;
       }
 
+      /* Hover / active стан */
       .subgroup-btn:hover {
         border-color: var(--accent-cyan);
-        background: rgba(57, 197, 207, 0.09);
+        background: rgba(57, 197, 207, 0.08);
+        box-shadow: 0 0 0 1px rgba(57, 197, 207, 0.3);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(57, 197, 207, 0.2);
       }
 
       .subgroup-btn:active {
-        transform: scale(0.97);
+        transform: translateY(0);
+        box-shadow: none;
       }
-      /* Коли група вимкнена */
+
+      /* Коли група вимкнена (off) */
       .subgroup-btn.off {
-        background: rgba(210, 153, 34, 0.16);
+        background: rgba(210, 153, 34, 0.14); /* легкий помаранчевий фон */
         border-color: var(--status-yellow);
         color: var(--status-yellow);
       }
 
       .subgroup-btn.off:hover {
-        background: rgba(210, 153, 34, 0.26);
+        background: rgba(210, 153, 34, 0.24);
+        border-color: #e0b04a;
       }
 
       /* Коли група повністю вимкнена або пошкоджена (опціонально) */
@@ -687,29 +668,34 @@
       }
 
       /* Назва групи (sg10, ID_415 тощо) */
-      /* Текст всередині кнопки */
       .subgroup-id {
-        font-size: 0.92rem;
+        font-size: 0.9em;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
+        margin-bottom: 2px;
         color: inherit;
       }
 
+      /* Рядок з потужністю та кількістю будинків */
       .subgroup-power {
-        font-size: 0.62rem;
-        opacity: 0.9;
+        font-size: 0.68rem;
+        opacity: 0.92;
+        margin-bottom: 3px;
+        color: var(--text-secondary);
       }
 
+      /* Короткий список вулиць (3-4 приклади) */
       .subgroup-streets {
-        font-size: 0.56rem;
-        line-height: 1.15;
+        font-size: 0.58rem;
+        line-height: 1.2;
         opacity: 0.75;
-        max-height: 2.3em;
+        max-height: 2.4em;
         overflow: hidden;
         text-overflow: ellipsis;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+        width: 100%;
       }
 
       /* Додатковий акцент для активної/гарячої групи (опціонально) */
@@ -1285,50 +1271,6 @@
         height: 100%;
         background: #0a0e14;
       }
-
-      .house-marker {
-        transition: all 0.3s;
-      }
-
-      /* Підсвітка маркерів залежно від стану */
-      .marker-on {
-        filter: drop-shadow(0 0 4px #3fb950);
-      }
-
-      .marker-off {
-        filter: none;
-      }
-
-      .marker-damaged {
-        filter: drop-shadow(0 0 6px #f85149);
-        animation: pulse-red 2s infinite;
-      }
-
-      @keyframes pulse-red {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.75;
-        }
-      }
-
-      .marker-critical {
-        filter: drop-shadow(0 0 8px #f85149) brightness(1.15);
-        animation: pulse-critical 2s infinite;
-      }
-
-      @keyframes pulse-critical {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.7;
-        }
-      }
-
       .leaflet-popup-content-wrapper {
         background: var(--bg-panel);
         color: var(--text-primary);
@@ -1337,12 +1279,8 @@
       .leaflet-popup-tip {
         background: var(--bg-panel);
       }
-
-      .leaflet-circle-marker {
-        transition:
-          fill 0.3s ease,
-          fill-opacity 0.3s ease,
-          radius 0.3s ease;
+      .house-marker {
+        transition: all 0.3s;
       }
     </style>
   </head>
@@ -1369,16 +1307,6 @@
         <div class="stat-pill">
           <span class="stat-value gold" id="reputation">★★★☆☆</span>
         </div>
-
-        <div class="stat-pill" style="min-width: 180px">
-          <span class="stat-label">GEN</span>
-          <span class="stat-value cyan" id="gen-value">1200</span>
-          <span style="margin: 0 4px; color: var(--text-muted)">/</span>
-          <span class="stat-value" id="cons-value" style="color: #ffaa00">1150</span>
-          <span style="font-size: 0.7rem; color: var(--text-muted)">MW</span>
-          <span id="balance-value" class="stat-value" style="margin-left: 8px; color: #00ff88">+50</span>
-        </div>
-
         <div class="header-buttons">
           <button class="btn-sm" onclick="togglePause()" id="pause-btn">⏸</button>
           <button class="btn-sm" onclick="openSettings()">⚙️</button>
@@ -7195,7 +7123,6 @@
 
         BUILDINGS.forEach(building => {
           const color = groupColors[building.group] || '#3fb950'
-
           const marker = L.circleMarker([building.lat, building.lng], {
             radius: 7,
             fillColor: color,
@@ -7229,37 +7156,8 @@
       // Оновлення кольорів при відключенні
       function updateMarkers() {
         buildingMarkers.forEach(({ marker, building }) => {
-          const groupBuildings = BUILDINGS.filter(b => b.group === building.group)
-          const offCount = groupBuildings.filter(b => b.status === 'off').length
-          const damaged = groupBuildings.some(b => b.status === 'damaged')
-          const isAllOn = offCount === 0
-
-          let fillColor
-          let strokeColor = '#ffffff' // біла рамка для видимості
-          let fillOpacity = 0.95
-          let radius = 7
-
-          if (damaged) {
-            fillColor = '#f85149' // червоний — пошкоджено
-            fillOpacity = 0.85
-          } else if (isAllOn) {
-            fillColor = '#3fb950' // зелений — увімкнено
-            fillOpacity = 0.95
-          } else {
-            fillColor = '#222222' // чорний/темно-сірий — вимкнено
-            fillOpacity = 0.7 // трохи прозоріший, щоб не зливатися з фоном
-            radius = 6 // трохи менший розмір для вимкнених
-          }
-
-          marker.setStyle({
-            fillColor: fillColor,
-            color: strokeColor,
-            weight: 2,
-            opacity: 1,
-            fillOpacity: fillOpacity,
-            radius: radius,
-            className: damaged ? 'marker-damaged' : isAllOn ? 'marker-on' : 'marker-off',
-          })
+          const isOff = building.status === 'off'
+          marker.setStyle({ fillColor: isOff ? '#d29922' : groupColors[building.group] || '#3fb950' })
         })
       }
 
@@ -7281,88 +7179,6 @@
         updateUI()
       }
 
-      // Функція для анімації польоту загрози
-      function animateThreatToTarget(targetBuilding, type = 'shahed') {
-        if (!map || !targetBuilding) return
-
-        const startLatLng = map.getBounds().getNorthWest() // починаємо з лівого верхнього кута карти
-        const endLatLng = [targetBuilding.lat, targetBuilding.lng]
-
-        const path = [startLatLng, endLatLng]
-
-        // Лінія траєкторії (опціонально, можна прибрати)
-        const line = L.polyline(path, {
-          color: type === 'shahed' ? '#888888' : '#ff4444',
-          weight: 2,
-          opacity: 0.4,
-          dashArray: '5, 10',
-        }).addTo(map)
-
-        // Рухома іконка загрози
-        const threatMarker = L.circleMarker(startLatLng, {
-          radius: type === 'shahed' ? 6 : 8,
-          fillColor: type === 'shahed' ? '#888' : '#ff4444',
-          color: '#fff',
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.9,
-        }).addTo(map)
-
-        // Іконка або текст (опціонально)
-        threatMarker.bindTooltip(type === 'shahed' ? '🛩️' : '🚀', {
-          permanent: true,
-          direction: 'top',
-          className: 'threat-tooltip',
-        })
-
-        const duration = type === 'shahed' ? 8000 : 4000 // шахед повільніше
-        let startTime = null
-
-        function animate(time) {
-          if (!startTime) startTime = time
-          const progress = (time - startTime) / duration
-
-          if (progress < 1) {
-            const lat = startLatLng.lat + (endLatLng[0] - startLatLng.lat) * progress
-            const lng = startLatLng.lng + (endLatLng[1] - startLatLng.lng) * progress
-            threatMarker.setLatLng([lat, lng])
-            requestAnimationFrame(animate)
-          } else {
-            // Приліт
-            map.removeLayer(threatMarker)
-            map.removeLayer(line)
-            showExplosion(targetBuilding.lat, targetBuilding.lng)
-            applyDamage(targetBuilding)
-          }
-        }
-
-        requestAnimationFrame(animate)
-      }
-
-      function applyDamage(building) {
-        if (!building) return
-
-        const wasPowered = building.status === 'on'
-
-        // Пошкоджуємо
-        if (building.status === 'on') {
-          G.consumption -= building.power
-        }
-        building.status = 'damaged'
-
-        // Якщо був увімкнений → ремонт в 3 рази довший
-        if (wasPowered) {
-          building.repairTime = (building.repairTime || 30) * 3 // наприклад, базовий час 30 сек → 90 сек
-          addEvent('alert', `💥 ${building.address} був заживлений → ремонт ×3!`)
-        } else {
-          building.repairTime = building.repairTime || 30
-        }
-
-        updateMarkers()
-        renderGroups()
-        updateUI()
-      }
-
       // Рендер груп унизу
       function renderGroups() {
         const grid = document.getElementById('groups-grid')
@@ -7374,14 +7190,28 @@
             const isAllOn = offCount === 0
             const cls = isAllOn ? 'subgroup-btn' : 'subgroup-btn off'
 
+            // Короткий список вулиць
             const streets = [...new Set(g.buildings.map(b => b.address.split(',')[0]))].slice(0, 3).join(', ')
 
             return `
-      <button class="${cls}" onclick="toggleGroup('${g.id}')">
-        <div class="subgroup-id">${g.name}</div>
-        <div class="subgroup-power">${g.count} буд • ${g.power} кВт</div>
-        <div class="subgroup-streets">${streets}</div>
+      <button class="subgroup-btn ${isAllOn ? '' : 'off'}" onclick="toggleGroup('${g.id}')">
+        <div class="subgroup-id" style="color: ${groupColors[g.id] || 'inherit'}">
+          ${g.name}
+        </div>
+        <div class="subgroup-power">
+          ${g.count} буд • ${g.power} кВт
+        </div>
+        <div class="subgroup-streets">
+          ${streets}
+        </div>
       </button>`
+
+            //       return `
+            // <button class="${cls}" onclick="toggleGroup('${g.id}')" title="${g.buildings.map(b => b.address).join('\n')}">
+            //   <span class="subgroup-id">${g.name}</span>
+            //   <span class="subgroup-power">${g.count} буд. • ${g.power} кВт</span>
+            //   <span style="font-size:0.52rem;opacity:0.75">${streets}</span>
+            // </button>`
           })
           .join('')
       }
@@ -7659,14 +7489,6 @@
             else if (hasOff) shape.classList.add('warning')
           }
         })
-
-        document.getElementById('gen-value').textContent = Math.round(G.generation)
-        document.getElementById('cons-value').textContent = Math.round(G.consumption)
-
-        const balance = Math.round(G.generation - G.consumption)
-        const balanceEl = document.getElementById('balance-value')
-        balanceEl.textContent = (balance >= 0 ? '+' : '') + balance
-        balanceEl.style.color = balance >= 50 ? '#00ff88' : balance >= 0 ? '#ffaa00' : '#ff5555'
       }
 
       function addEvent(type, text) {
@@ -7727,8 +7549,6 @@
         }
 
         // renderSubgroups()
-        updateMarkers() // оновлює кольори на карті
-        renderGroups() // оновлює нижню панель
         renderOutages()
         renderMood()
         renderThreats()
@@ -7745,7 +7565,7 @@
         }
       }
 
-      function spawnThreat(type = 'shahed') {
+      function spawnThreat() {
         const avail = THREATS.filter(t => t.wave <= G.wave.num)
         const tmpl = avail[Math.floor(Math.random() * avail.length)]
         let blocked = false
@@ -7768,59 +7588,57 @@
           ty: target.y,
           progress: 0,
         })
-
-        // Вибираємо випадкову групу
-        const activeGroups = [...new Set(BUILDINGS.filter(b => b.status !== 'damaged').map(b => b.group))]
-        if (activeGroups.length === 0) return
-
-        const targetGroup = activeGroups[Math.floor(Math.random() * activeGroups.length)]
-
-        // Вибираємо випадковий будинок у групі
-        const buildingsInGroup = BUILDINGS.filter(b => b.group === targetGroup)
-        const targetBuilding = buildingsInGroup[Math.floor(Math.random() * buildingsInGroup.length)]
-
-        // Запускаємо анімацію
-        animateThreatToTarget(targetBuilding, type)
-
-        addEvent('warning', `${type.toUpperCase()} летить на ${targetBuilding.address} (${targetGroup})`)
       }
 
       function updateThreats() {
-        const shahedEl = document.getElementById('cnt-shahed')
-        const rocketEl = document.getElementById('cnt-rocket')
-        const ballEl = document.getElementById('cnt-ball')
-
-        if (shahedEl) shahedEl.textContent = G.wave.threats.filter(t => t.type === 'shahed').length
-        if (rocketEl) rocketEl.textContent = G.wave.threats.filter(t => t.type === 'rocket').length
-        if (ballEl) ballEl.textContent = G.wave.threats.filter(t => t.type === 'ballistic').length
+        const layer = document.getElementById('attacks-layer')
+        layer.innerHTML = ''
+        const toRemove = []
+        G.wave.threats.forEach(t => {
+          t.progress += t.speed * (Settings.gameSpeed / 100)
+          if (t.progress >= 1) {
+            toRemove.push(t.id)
+            if (t.dmg > 0) hitDistrict(t)
+            showExplosion(t.tx, t.ty)
+          } else {
+            const cx = t.x + (t.tx - t.x) * t.progress
+            const cy = t.y + (t.ty - t.y) * t.progress
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'line')
+            path.setAttribute('x1', cx)
+            path.setAttribute('y1', cy)
+            path.setAttribute('x2', t.tx)
+            path.setAttribute('y2', t.ty)
+            path.setAttribute('class', 'attack-path ' + t.type)
+            layer.appendChild(path)
+            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text')
+            icon.setAttribute('x', cx)
+            icon.setAttribute('y', cy)
+            icon.setAttribute('font-size', '14')
+            icon.setAttribute('text-anchor', 'middle')
+            icon.textContent = t.icon
+            layer.appendChild(icon)
+          }
+        })
+        G.wave.threats = G.wave.threats.filter(t => !toRemove.includes(t.id))
       }
 
       function hitDistrict(threat) {
         if (Settings.godMode) return
-
-        const groupBuildings = BUILDINGS.filter(b => b.group === threat.targetGroup || b.group === threat.targetId)
-
+        const subs = G.subgroups.filter(s => s.districtId === threat.targetId && s.status !== 'damaged')
         let dmg = Math.round((threat.dmg * (1 - G.dmgReduction) * Settings.enemyDmg) / 100)
         if (dmg < 1) dmg = 1
-
-        const toHit = groupBuildings.slice(0, dmg)
-
-        toHit.forEach(b => {
-          if (b.status === 'on') {
-            G.consumption -= b.power
-            b.status = 'damaged'
-          }
+        const toHit = subs.slice(0, Math.min(dmg, subs.length))
+        toHit.forEach(s => {
+          if (s.status === 'on') G.consumption -= s.power
+          s.status = 'damaged'
+          setTimeout(() => repairSub(s.id), (G.repairTime * 1000 * Settings.repairTimeMod) / 100)
         })
-
         if (toHit.length > 0) {
-          addEvent('alert', `💥 ${threat.name} → ${toHit[0].group} (${toHit.length} буд.)`)
-          showExplosion(toHit[0].lat, toHit[0].lng) // вибух на карті
+          const dist = DISTRICTS.find(d => d.id === threat.targetId)
+          addEvent('alert', `💥 ${threat.name}→${dist.short} ${toHit.length}шкоди`)
         }
-
-        updateMarkers()
-        renderGroups()
-        updateUI()
       }
+
       function repairSub(id) {
         const s = G.subgroups.find(x => x.id === id)
         if (s && s.status === 'damaged') {
@@ -7831,23 +7649,16 @@
         }
       }
 
-      function showExplosion(lat, lng) {
-        if (!map) return
-
-        const explosion = L.circleMarker([lat, lng], {
-          radius: 12,
-          fillColor: '#ff4444',
-          color: '#ffff00',
-          weight: 3,
-          opacity: 0.9,
-          fillOpacity: 0.6,
-        }).addTo(map)
-
-        // Анімація зникнення
-        setTimeout(() => {
-          explosion.setStyle({ opacity: 0, fillOpacity: 0 })
-          setTimeout(() => map.removeLayer(explosion), 600)
-        }, 300)
+      function showExplosion(x, y) {
+        const section = document.getElementById('map-section')
+        const svg = document.getElementById('kyiv-svg')
+        const rect = svg.getBoundingClientRect()
+        const exp = document.createElement('div')
+        exp.className = 'explosion'
+        exp.style.left = (x * rect.width) / 500 + 'px'
+        exp.style.top = (y * rect.height) / 180 + 24 + 'px'
+        section.appendChild(exp)
+        setTimeout(() => exp.remove(), 400)
       }
 
       function endWave() {
