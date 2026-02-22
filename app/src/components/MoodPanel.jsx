@@ -5,8 +5,16 @@ export default function MoodPanel({ state }) {
     { key: 'critical', label: '\u{1F3E5} Критична інфра', val: state.mood.critical },
   ];
 
-  const longOff = state.subgroups
-    .filter(s => s.status === 'off' && s.offTime > 30)
+  // Aggregate off-time by group
+  const groupOffMap = {};
+  state.buildings.forEach(b => {
+    if (b.status === 'off' && (b.offTime || 0) > 30) {
+      if (!groupOffMap[b.group] || b.offTime > groupOffMap[b.group].offTime) {
+        groupOffMap[b.group] = { id: b.group, group: b.group, offTime: b.offTime, address: b.address };
+      }
+    }
+  });
+  const longOff = Object.values(groupOffMap)
     .sort((a, b) => b.offTime - a.offTime)
     .slice(0, 5);
 
@@ -43,8 +51,8 @@ export default function MoodPanel({ state }) {
               const cls = s.offTime > 90 ? 'danger' : 'warn';
               const emoji = s.offTime > 90 ? '\u{1F621}' : '\u{1F610}';
               return (
-                <div className={`outage-item ${cls}`} key={s.id}>
-                  <span>{s.districtShort}-{s.num}</span>
+                <div className={`outage-item ${cls}`} key={s.group}>
+                  <span>{s.group}</span>
                   <span>{emoji} {min}:{String(sec).padStart(2, '0')}</span>
                 </div>
               );

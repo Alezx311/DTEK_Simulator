@@ -1,4 +1,3 @@
-import { DISTRICTS } from '../data/districts';
 import { UPGRADES } from '../data/upgrades';
 
 export default function WavePanel({ state, dispatch }) {
@@ -19,12 +18,11 @@ export default function WavePanel({ state, dispatch }) {
           <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 5 }}>{'\u2014'}</div>
         ) : (
           w.threats.slice(0, 3).map(t => {
-            const dist = DISTRICTS.find(d => d.id === t.targetId);
             return (
               <div className="threat-slot" key={t.id}>
                 <span className="threat-icon">{t.icon}</span>
                 <span className="threat-name">{t.name}</span>
-                <span className="threat-target">{'\u2192'}{dist?.short || '?'}</span>
+                <span className="threat-target">{'\u2192'}{t.targetGroup || t.targetAddress || '?'}</span>
               </div>
             );
           })

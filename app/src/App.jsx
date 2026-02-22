@@ -3,7 +3,7 @@ import { createInitialState, gameReducer } from './game/state';
 import { gameTick } from './game/engine';
 import Header from './components/Header';
 import MoodPanel from './components/MoodPanel';
-import KyivMap from './components/KyivMap';
+import LeafletMap from './components/LeafletMap';
 import WavePanel from './components/WavePanel';
 import SubgroupsPanel from './components/SubgroupsPanel';
 import GameOverlay from './components/GameOverlay';
@@ -49,7 +49,7 @@ export default function App() {
       <div className="main-layout">
         <div className="top-section">
           <MoodPanel state={state} />
-          <KyivMap state={state} />
+          <LeafletMap state={state} dispatch={wrappedDispatch} />
           <WavePanel state={state} dispatch={wrappedDispatch} />
         </div>
         <SubgroupsPanel state={state} dispatch={wrappedDispatch} />

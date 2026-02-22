@@ -148,18 +148,16 @@
 .threat-counter.shahed { color: var(--status-orange); }
 .threat-counter.rocket { color: var(--status-red); }
 .threat-counter.ballistic { color: var(--status-purple); }
-.kyiv-map { width: 100%; height: 100%; }
-.district-shape { fill: rgba(63,185,80,0.1); stroke: var(--status-green); stroke-width: 1.5; cursor: pointer; transition: all 0.2s; }
-.district-shape:hover { fill: rgba(63,185,80,0.2); stroke-width: 2; }
-.district-shape.warning { fill: rgba(210,153,34,0.12); stroke: var(--status-yellow); }
-.district-shape.danger { fill: rgba(248,81,73,0.15); stroke: var(--status-red); }
-.district-label { font-size: 7px; fill: var(--text-secondary); pointer-events: none; text-anchor: middle; }
-.district-power { font-size: 6px; fill: var(--accent-cyan); pointer-events: none; text-anchor: middle; }
-.attack-path { stroke-width: 2; stroke-dasharray: 4,2; fill: none; opacity: 0.7; }
-.attack-path.shahed { stroke: var(--status-orange); }
-.attack-path.rocket { stroke: var(--status-red); }
-.attack-path.ballistic, .attack-path.boss { stroke: var(--status-purple); }
-.attack-path.cyber { stroke: var(--accent-cyan); }
+.kyiv-map { width: 100%; height: calc(100% - 32px); margin-top: 32px; background: var(--bg-primary); }
+
+/* Leaflet overrides */
+.leaflet-container { background: var(--bg-primary) !important; z-index: 1 !important; }
+.leaflet-pane { z-index: 1 !important; }
+.leaflet-control-zoom { z-index: 5 !important; }
+.leaflet-popup-content-wrapper { background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border); }
+.leaflet-popup-tip { background: var(--bg-panel); }
+.leaflet-tooltip { font-family: 'JetBrains Mono', monospace; font-size: 0.8em; }
+.threat-tooltip { background: rgba(0,0,0,0.7) !important; color: white !important; border: none !important; border-radius: 4px; padding: 4px 8px; font-size: 1.1em; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
 
 /* ========== RIGHT PANEL (WAVE) ========== */
 .right-panel { flex: 0 0 16%; min-width: 150px; max-width: 260px; }
@@ -264,6 +262,7 @@
 .subgroup-btn.angry { border-color: var(--status-red); box-shadow: 0 0 6px rgba(248,81,73,0.4); }
 .subgroup-id { font-size: 0.9em; }
 .subgroup-power { font-size: 0.75em; opacity: 0.8; }
+.subgroup-streets { font-size: 0.6em; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .subgroup-status { position: absolute; top: 2px; right: 3px; font-size: 10px; }
 .fatigue-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--bg-primary); border-radius: 0 0 4px 4px; }
 .fatigue-fill { height: 100%; transition: width 0.3s, background 0.3s; }

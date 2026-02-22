@@ -1,79 +1,82 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { groupColors } from '../data/mapData';
 
 export default function SubgroupsPanel({ state, dispatch }) {
-  const [tooltip, setTooltip] = useState(null);
+  const groups = useMemo(() => {
+    const map = {};
+    state.buildings.forEach(b => {
+      if (!map[b.group]) {
+        map[b.group] = { id: b.group, on: 0, off: 0, damaged: 0, totalPower: 0, onPower: 0, addresses: new Set() };
+      }
+      const g = map[b.group];
+      g[b.status === 'on' ? 'on' : b.status === 'off' ? 'off' : 'damaged']++;
+      g.totalPower += b.power;
+      if (b.status === 'on') g.onPower += b.power;
+      g.addresses.add(b.address.split(',')[0]);
+    });
+    return Object.values(map).sort((a, b) => a.id.localeCompare(b.id));
+  }, [state.buildings]);
 
-  const totalPower = state.subgroups.filter(s => s.status === 'on').reduce((a, s) => a + s.power, 0);
-
-  function handleHover(e, s) {
-    if (!state.settings.showTooltips) return;
-    const rect = e.target.getBoundingClientRect();
-    setTooltip({ s, x: rect.left, y: rect.top - 100 });
-  }
+  const totalOnPower = groups.reduce((a, g) => a + g.onPower, 0);
+  const totalBuildings = state.buildings.length;
+  const onBuildings = state.buildings.filter(b => b.status === 'on').length;
+  const damagedBuildings = state.buildings.filter(b => b.status === 'damaged').length;
 
   return (
     <div className="bottom-section">
       <div className="controls-header">
         <div className="controls-header-left">
-          <span>{'\u26A1'} ПІДГРУПИ</span>
-          <span style={{ color: 'var(--accent-cyan)' }}>{totalPower} MW</span>
-          <div className="legend">
-            <div className="legend-item"><div className="legend-dot on" />ON</div>
-            <div className="legend-item"><div className="legend-dot off" />OFF</div>
-            <div className="legend-item"><div className="legend-dot hot" />HOT</div>
-            <div className="legend-item"><div className="legend-dot dmg" />DMG</div>
-          </div>
+          <span>{'\u26A1'} ГРУПИ</span>
+          <span style={{ color: 'var(--accent-cyan)' }}>{totalOnPower} кВт</span>
+          <span style={{ color: 'var(--text-muted)' }}>{onBuildings}/{totalBuildings} буд.</span>
+          {damagedBuildings > 0 && (
+            <span style={{ color: 'var(--status-red)' }}>{damagedBuildings} пошк.</span>
+          )}
         </div>
         <div className="controls-header-actions">
           <button className="action-btn success" onClick={() => dispatch({ type: 'ENABLE_ALL' })}>{'\u2713'} Все ON</button>
           <button className="action-btn" onClick={() => dispatch({ type: 'USE_RESERVE' })} disabled={!state.hasReserve || state.reserveActive}>{'\u{1F50B}'}+300</button>
-          <button className="action-btn danger" onClick={() => dispatch({ type: 'EMERGENCY_OFF' })}>{'\u26A0'}-5</button>
+          <button className="action-btn danger" onClick={() => dispatch({ type: 'EMERGENCY_OFF' })}>{'\u26A0'} Скинути 20%</button>
           <button className="action-btn" onClick={() => dispatch({ type: 'ROTATE_GROUPS' })}>{'\u{1F504}'} Ротація</button>
         </div>
       </div>
       <div className="subgroups-container">
         <div className="subgroups-grid">
-          {state.subgroups.map(s => {
-            let cls = 'subgroup-btn ' + s.status;
-            let statusIcon = '';
-            if (s.status === 'on' && s.heat >= 70) { cls = 'subgroup-btn overheated'; statusIcon = '\u{1F525}'; }
-            if (s.status === 'off' && s.offTime > 90) { cls += ' angry'; statusIcon = '\u{1F621}'; }
-            else if (s.status === 'off' && s.offTime > 45) { statusIcon = '\u{1F610}'; }
-            const heatPct = Math.min(100, s.heat);
-            const heatCls = heatPct >= 70 ? 'critical' : heatPct >= 50 ? 'danger' : heatPct >= 30 ? 'warn' : 'ok';
+          {groups.map(g => {
+            const hasDmg = g.damaged > 0;
+            const allOn = g.on > 0 && g.off === 0 && g.damaged === 0;
+            const allOff = g.off > 0 && g.on === 0;
+            let cls = 'subgroup-btn';
+            if (hasDmg) cls += ' damaged';
+            else if (allOff) cls += ' off';
+
+            const color = groupColors[g.id] || '#3fb950';
+            const streets = [...g.addresses].slice(0, 2).join(', ');
+            const total = g.on + g.off + g.damaged;
 
             return (
               <button
                 className={cls}
-                key={s.id}
-                onClick={() => dispatch({ type: 'TOGGLE_SUBGROUP', payload: s.id })}
-                onMouseEnter={e => handleHover(e, s)}
-                onMouseLeave={() => setTooltip(null)}
-                disabled={s.status === 'damaged'}
+                key={g.id}
+                onClick={() => dispatch({ type: 'TOGGLE_GROUP', payload: g.id })}
+                style={{ borderColor: allOn ? color : undefined }}
               >
-                <span className="subgroup-status">{statusIcon}</span>
-                <span className="subgroup-id">{s.districtShort}-{s.num}</span>
-                <span className="subgroup-power">{s.power}MW</span>
+                <span className="subgroup-id">{g.id}</span>
+                <span className="subgroup-power">{total} буд {'\u2022'} {g.totalPower} кВт</span>
+                <span className="subgroup-streets">{streets}</span>
+                {hasDmg && <span className="subgroup-status">{'\u{1F4A5}'}</span>}
+                {allOff && <span className="subgroup-status">{'\u{1F319}'}</span>}
                 <div className="fatigue-bar">
-                  <div className={`fatigue-fill ${heatCls}`} style={{ width: `${heatPct}%` }} />
+                  <div
+                    className={`fatigue-fill ${hasDmg ? 'critical' : allOn ? 'ok' : 'warn'}`}
+                    style={{ width: `${total > 0 ? (g.on / total) * 100 : 0}%` }}
+                  />
                 </div>
               </button>
             );
           })}
         </div>
       </div>
-
-      {tooltip && (
-        <div className="tooltip active" style={{ left: tooltip.x, top: tooltip.y }}>
-          <div className="tooltip-title">{tooltip.s.districtName} - Група {tooltip.s.num}</div>
-          <div className="tooltip-row"><span className="tooltip-label">Потужність:</span><span>{tooltip.s.power} MW</span></div>
-          <div className="tooltip-row"><span className="tooltip-label">Статус:</span><span>{tooltip.s.status === 'on' ? 'ON' : tooltip.s.status === 'off' ? 'OFF' : 'DMG'}</span></div>
-          <div className="tooltip-row"><span className="tooltip-label">Нагрів:</span><span>{Math.round(tooltip.s.heat)}%</span></div>
-          {tooltip.s.status === 'off' && (
-            <div className="tooltip-row"><span className="tooltip-label">Без світла:</span><span>{Math.floor(tooltip.s.offTime / 60)}:{String(tooltip.s.offTime % 60).padStart(2, '0')}</span></div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

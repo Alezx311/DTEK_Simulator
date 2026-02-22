@@ -1,33 +1,17 @@
-import { DISTRICTS } from '../data/districts';
 import { UPGRADES, applyUpgradeEffect } from '../data/upgrades';
+import { createBuildings } from '../data/mapData';
 
 export function createInitialState() {
-  let subId = 1;
-  const subgroups = [];
-  DISTRICTS.forEach(d => {
-    for (let i = 1; i <= d.subs; i++) {
-      subgroups.push({
-        id: subId++,
-        districtId: d.id,
-        districtName: d.name,
-        districtShort: d.short,
-        num: i,
-        power: Math.round(d.power / d.subs),
-        status: 'on',
-        onTime: 0,
-        offTime: 0,
-        heat: 0,
-      });
-    }
-  });
+  const buildings = createBuildings();
+  const totalPower = buildings.reduce((a, b) => a + b.power, 0);
 
   return {
     paused: false,
     gameOver: false,
     gameResult: null,
     day: 1,
-    generation: 1200,
-    consumption: 780,
+    generation: Math.round(totalPower * 1.4), // ~40% headroom
+    consumption: Math.round(totalPower * 0.85),
     load: 65,
     maxLoad: 65,
     money: 500,
@@ -42,10 +26,10 @@ export function createInitialState() {
     globalDef: 0,
     dmgReduction: 0,
     wave: { num: 1, phase: 'prep', time: 45, threats: [] },
-    subgroups,
+    buildings,
     boughtUpgrades: [],
     currentTab: 'infra',
-    events: [{ id: Date.now(), type: 'info', text: 'Старт! Ctrl+Shift+D для дебагу', time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }],
+    events: [{ id: Date.now(), type: 'info', text: 'Старт! Клікай по будинках або групах.', time: new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }],
     settings: {
       difficulty: 'normal',
       attackFreq: 100,
@@ -76,57 +60,71 @@ export function gameReducer(state, action) {
     case 'SET_PAUSED':
       return { ...state, paused: action.payload };
 
-    case 'TOGGLE_SUBGROUP': {
-      const s = state.subgroups.find(x => x.id === action.payload);
-      if (!s || s.status === 'damaged') return state;
-      const newSubs = state.subgroups.map(x => {
-        if (x.id !== action.payload) return x;
-        const newStatus = x.status === 'on' ? 'off' : 'on';
-        return { ...x, status: newStatus };
+    // Toggle entire group by groupId
+    case 'TOGGLE_GROUP': {
+      const groupId = action.payload;
+      const groupBuildings = state.buildings.filter(b => b.group === groupId);
+      if (groupBuildings.length === 0) return state;
+      // If any are on, turn all off. Otherwise turn all on.
+      const anyOn = groupBuildings.some(b => b.status === 'on');
+      let diff = 0;
+      const newBuildings = state.buildings.map(b => {
+        if (b.group !== groupId || b.status === 'damaged') return b;
+        if (anyOn && b.status === 'on') {
+          diff -= b.power;
+          return { ...b, status: 'off' };
+        } else if (!anyOn && b.status === 'off') {
+          diff += b.power;
+          return { ...b, status: 'on' };
+        }
+        return b;
       });
-      const diff = s.status === 'on' ? -s.power : s.power;
-      return { ...state, subgroups: newSubs, consumption: state.consumption + diff };
+      return { ...state, buildings: newBuildings, consumption: state.consumption + diff };
     }
 
     case 'ENABLE_ALL': {
       let diff = 0;
-      const newSubs = state.subgroups.map(s => {
-        if (s.status === 'off') { diff += s.power; return { ...s, status: 'on' }; }
-        return s;
+      let count = 0;
+      const newBuildings = state.buildings.map(b => {
+        if (b.status === 'off') { diff += b.power; count++; return { ...b, status: 'on' }; }
+        return b;
       });
-      return addEvent({ ...state, subgroups: newSubs, consumption: state.consumption + diff }, 'info', `ON ${newSubs.filter((s, i) => state.subgroups[i].status === 'off').length} груп`);
+      return addEvent({ ...state, buildings: newBuildings, consumption: state.consumption + diff }, 'info', `ON ${count} будинків`);
     }
 
     case 'EMERGENCY_OFF': {
-      const sorted = [...state.subgroups].filter(s => s.status === 'on').sort((a, b) => b.heat - a.heat).slice(0, 5);
-      const ids = new Set(sorted.map(s => s.id));
+      // Turn off 20% of buildings that are on (random selection)
+      const onBuildings = state.buildings.filter(b => b.status === 'on');
+      const count = Math.min(Math.ceil(onBuildings.length * 0.2), onBuildings.length);
+      const shuffled = [...onBuildings].sort(() => Math.random() - 0.5);
+      const toOff = new Set(shuffled.slice(0, count).map(b => b.id));
       let diff = 0;
-      const newSubs = state.subgroups.map(s => {
-        if (ids.has(s.id)) { diff -= s.power; return { ...s, status: 'off' }; }
-        return s;
+      const newBuildings = state.buildings.map(b => {
+        if (toOff.has(b.id)) { diff -= b.power; return { ...b, status: 'off' }; }
+        return b;
       });
-      return addEvent({ ...state, subgroups: newSubs, consumption: state.consumption + diff }, 'warning', `OFF ${ids.size} гарячих`);
+      return addEvent({ ...state, buildings: newBuildings, consumption: state.consumption + diff }, 'warning', `OFF ${count} будинків`);
     }
 
     case 'ROTATE_GROUPS': {
-      const on = state.subgroups.filter(s => s.status === 'on').sort((a, b) => b.heat - a.heat);
-      const off = state.subgroups.filter(s => s.status === 'off').sort((a, b) => b.offTime - a.offTime);
-      const n = Math.min(4, on.length, off.length);
-      const toOff = new Set();
-      const toOn = new Set();
-      for (let i = 0; i < n; i++) {
-        if (on[i].heat > 25 || off[i].offTime > 25) {
-          toOff.add(on[i].id);
-          toOn.add(off[i].id);
-        }
-      }
-      let diff = 0;
-      const newSubs = state.subgroups.map(s => {
-        if (toOff.has(s.id)) { diff -= s.power; return { ...s, status: 'off' }; }
-        if (toOn.has(s.id)) { diff += s.power; return { ...s, status: 'on' }; }
-        return s;
+      // Find groups that have all buildings on, and groups that have all off
+      const groups = {};
+      state.buildings.forEach(b => {
+        if (!groups[b.group]) groups[b.group] = { on: 0, off: 0, damaged: 0 };
+        groups[b.group][b.status === 'on' ? 'on' : b.status === 'off' ? 'off' : 'damaged']++;
       });
-      return addEvent({ ...state, subgroups: newSubs, consumption: state.consumption + diff }, 'info', `Ротація ${toOff.size} груп`);
+      const onGroups = Object.entries(groups).filter(([, g]) => g.on > 0 && g.off === 0).map(([id]) => id);
+      const offGroups = Object.entries(groups).filter(([, g]) => g.off > 0 && g.on === 0).map(([id]) => id);
+      const n = Math.min(3, onGroups.length, offGroups.length);
+      const toOff = new Set(onGroups.slice(0, n));
+      const toOn = new Set(offGroups.slice(0, n));
+      let diff = 0;
+      const newBuildings = state.buildings.map(b => {
+        if (toOff.has(b.group) && b.status === 'on') { diff -= b.power; return { ...b, status: 'off' }; }
+        if (toOn.has(b.group) && b.status === 'off') { diff += b.power; return { ...b, status: 'on' }; }
+        return b;
+      });
+      return addEvent({ ...state, buildings: newBuildings, consumption: state.consumption + diff }, 'info', `Ротація ${n} груп`);
     }
 
     case 'USE_RESERVE': {
@@ -169,13 +167,13 @@ export function gameReducer(state, action) {
         }
         case 'repair': {
           let diff = 0;
-          const newSubs = state.subgroups.map(s => {
-            if (s.status === 'damaged') { diff += s.power; return { ...s, status: 'on', heat: 0 }; }
-            return s;
+          const newBuildings = state.buildings.map(b => {
+            if (b.status === 'damaged') { diff += b.power; return { ...b, status: 'on' }; }
+            return b;
           });
-          return { ...state, subgroups: newSubs, consumption: state.consumption + diff };
+          return { ...state, buildings: newBuildings, consumption: state.consumption + diff };
         }
-        case 'cooldown': return { ...state, subgroups: state.subgroups.map(s => ({ ...s, heat: 0 })) };
+        case 'cooldown': return state;
         default: return state;
       }
     }
